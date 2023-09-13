@@ -8,7 +8,7 @@ internal static class Program
         if (!BraidGame.TryGetRunningInstance(out var braidGame)) { Console.WriteLine("Braid is not running"); return; }
         if (!braidGame!.IsSteamVersion) { Console.WriteLine("Only Steam version of Braid is supported"); return; }
 
-        braidGame.CamLockX = braidGame.CamLockY = options.LockCam ?? true;
+        braidGame.CamLockX = braidGame.CamLockY = options.LockCam ?? !braidGame.CamLockX;
         if (options.SetCamPosX != null) { braidGame.CamPosX = options.SetCamPosX.Value; }
         if (options.SetCamPosY != null) { braidGame.CamPosY = options.SetCamPosY.Value; }
 
