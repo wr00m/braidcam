@@ -8,7 +8,7 @@ class BraidGame : IDisposable
     {
         var process = Process.GetProcessesByName("braid").FirstOrDefault();
         braidGame = process != null ? new(process) : null;
-        return false;
+        return braidGame != null;
     }
 
     private Process _process;
