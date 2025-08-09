@@ -28,7 +28,7 @@ internal class BraidGame : IDisposable
 
     public bool IsSteamVersion => _process.Modules[0].ModuleMemorySize == 7663616;
 
-    private static readonly byte[] _cameraEnabledBytes = [0xF3, 0x0F, 0x11];
+    private static readonly byte[] _cameraEnabledBytes = [0xf3, 0x0f, 0x11];
     private static readonly byte[] _cameraDisabledBytes = [0x90, 0x90, 0x90];
 
     private const IntPtr _cameraUpdateXAddr = 0x4a0367;
