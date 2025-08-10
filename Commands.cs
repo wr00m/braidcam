@@ -1,11 +1,11 @@
 ﻿using System.CommandLine;
 
-namespace BraidCam;
+namespace BraidKit;
 
 internal static class Commands
 {
     internal static RootCommand RootCommand =>
-        new("braidcam")
+        new("braidkit")
         {
             CameraLockCommand,
             CameraZoomCommand,

@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace BraidCam;
+namespace BraidKit;
 
 internal class BraidGame : IDisposable
 {
