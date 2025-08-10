@@ -125,6 +125,31 @@ internal class BraidGame : IDisposable
         set => _processMemoryHandler.WriteFloat(GetTimAddr(_timVelocityYOffset), value);
     }
 
+    private const IntPtr _timRunSpeedAddr = 0x005f6f08;
+    private const double _timRunSpeedDefault = 200;
+    private const IntPtr _timAirSpeedAddr = 0x005f6f30;
+    private const double _timAirSpeedDefault = 200;
+    private const IntPtr _timClimbSpeedAddr = 0x005f6f20;
+    private const double _timClimbSpeedDefault = 173.3;
+    public float TimSpeedMultiplier
+    {
+        get => (float)(_processMemoryHandler.ReadDouble(_timRunSpeedAddr) / _timRunSpeedDefault);
+        set
+        {
+            _processMemoryHandler.WriteDouble(_timRunSpeedAddr, _timRunSpeedDefault * value);
+            _processMemoryHandler.WriteDouble(_timAirSpeedAddr, _timAirSpeedDefault * value);
+            _processMemoryHandler.WriteDouble(_timClimbSpeedAddr, _timClimbSpeedDefault * value);
+        }
+    }
+
+    private const IntPtr _timJumpSpeedAddr = 0x005f6f28;
+    private const double _timJumpSpeedDefault = 360;
+    public float TimJumpMultiplier
+    {
+        get => (float)(_processMemoryHandler.ReadDouble(_timJumpSpeedAddr) / _timJumpSpeedDefault);
+        set => _processMemoryHandler.WriteDouble(_timJumpSpeedAddr, _timJumpSpeedDefault * value);
+    }
+
     private const IntPtr _drawDebugInfoAddr = 0x005f6dcf;
     public bool DrawDebugInfo
     {

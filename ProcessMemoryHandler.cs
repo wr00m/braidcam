@@ -23,6 +23,8 @@ internal class ProcessMemoryHandler : IDisposable
     public void WriteInt(IntPtr addr, int val) => WriteBytes(addr, BitConverter.GetBytes(val));
     public float ReadFloat(IntPtr addr) => BitConverter.ToSingle(ReadBytes(addr, sizeof(float)), 0);
     public void WriteFloat(IntPtr addr, float val) => WriteBytes(addr, BitConverter.GetBytes(val));
+    public double ReadDouble(IntPtr addr) => BitConverter.ToDouble(ReadBytes(addr, sizeof(double)), 0);
+    public void WriteDouble(IntPtr addr, double val) => WriteBytes(addr, BitConverter.GetBytes(val));
     public byte ReadByte(IntPtr addr) => ReadBytes(addr, 1)[0];
     public void WriteByte(IntPtr addr, byte val) => WriteBytes(addr, [val]);
     public byte[] ReadBytes(IntPtr addr, int count) { var buff = new byte[count]; ReadProcessMemory(_hProc, addr, buff, count, out _); return buff; }

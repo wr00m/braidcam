@@ -11,6 +11,8 @@ internal static class Commands
             CameraZoomCommand,
             TimPositionCommand,
             TimVelocityCommand,
+            TimSpeedMultiplierCommand,
+            TimJumpMultiplierCommand,
             ToggleFullSpeedInBackgroundCommand,
             ToggleDebugInfoCommand,
         };
@@ -104,6 +106,46 @@ internal static class Commands
             OutputTimVelocity(braidGame);
         });
 
+    private static Command TimSpeedMultiplierCommand =>
+        new Command("tim-speed", "Sets Tim's speed multiplier")
+        {
+            new Argument<float?>("multiplier") { Description = "Tim's speed multiplier" },
+            TimSpeedMultiplierResetCommand,
+        }.SetBraidGameAction((braidGame, parseResult) =>
+        {
+            if (parseResult.GetValue<float?>("multiplier") is float multiplier)
+                braidGame.TimSpeedMultiplier = multiplier;
+            OutputTimSpeedMultiplier(braidGame);
+        });
+
+    private static Command TimSpeedMultiplierResetCommand =>
+        new Command("reset", "Resets Tim's speed multiplier")
+        .SetBraidGameAction((braidGame, parseResult) =>
+        {
+            braidGame.TimSpeedMultiplier = 1;
+            OutputTimSpeedMultiplier(braidGame);
+        });
+
+    private static Command TimJumpMultiplierCommand =>
+        new Command("tim-jump", "Sets Tim's jump multiplier")
+        {
+            new Argument<float?>("multiplier") { Description = "Tim's jump multiplier" },
+            TimJumpMultiplierResetCommand
+        }.SetBraidGameAction((braidGame, parseResult) =>
+        {
+            if (parseResult.GetValue<float?>("multiplier") is float multiplier)
+                braidGame.TimJumpMultiplier = multiplier;
+            OutputTimJumpMultiplier(braidGame);
+        });
+
+    private static Command TimJumpMultiplierResetCommand =>
+        new Command("reset", "Resets Tim's jump multiplier")
+        .SetBraidGameAction((braidGame, parseResult) =>
+        {
+            braidGame.TimJumpMultiplier = 1;
+            OutputTimJumpMultiplier(braidGame);
+        });
+
     private static Command ToggleFullSpeedInBackgroundCommand =>
         new Command("bg-full-speed", "Toggles game running at full speed in background")
         .SetBraidGameAction((braidGame, parseResult) =>
@@ -156,6 +198,8 @@ internal static class Commands
     private static void OutputCameraZoom(BraidGame braidGame) => Console.WriteLine($"Camera zoom is {braidGame.Zoom:0.##}");
     private static void OutputTimPosition(BraidGame braidGame) => Console.WriteLine($"Tim's position is x={braidGame.TimPositionX:0.##} y={braidGame.TimPositionY:0.##}");
     private static void OutputTimVelocity(BraidGame braidGame) => Console.WriteLine($"Tim's velocity is x={braidGame.TimVelocityX:0.##} y={braidGame.TimVelocityY:0.##}");
+    private static void OutputTimSpeedMultiplier(BraidGame braidGame) => Console.WriteLine($"Tim's speed multiplier is {braidGame.TimSpeedMultiplier:0.##}");
+    private static void OutputTimJumpMultiplier(BraidGame braidGame) => Console.WriteLine($"Tim's jump multiplier is {braidGame.TimJumpMultiplier:0.##}");
     private static void OutputFullSpeedInBackground(BraidGame braidGame) => Console.WriteLine($"Full game speed in background is {(braidGame.FullSpeedInBackground ? "on" : "off")}");
     private static void OutputShowDebugInfo(BraidGame braidGame) => Console.WriteLine($"Debug info is {(braidGame.DrawDebugInfo ? "on" : "off")}");
 }
