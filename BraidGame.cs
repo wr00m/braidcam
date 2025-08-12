@@ -170,4 +170,6 @@ internal class BraidGame : IDisposable
         get => _processMemoryHandler.ReadByte(_sleepPaddingHasFocusAddr) == _invalidBool;
         set => _processMemoryHandler.WriteByte(_sleepPaddingHasFocusAddr, value ? _invalidBool : (byte)0x0);
     }
+
+    public void AddWatermark() => _processMemoryHandler.WriteInt(0x00507bda, 0x00579e10);
 }

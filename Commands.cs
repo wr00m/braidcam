@@ -94,7 +94,7 @@ internal static class Commands
                 braidGame.DetachTimFromGround();
             }
             OutputTimPosition(braidGame);
-        });
+        }, watermark: true);
 
     private static Command TimVelocityCommand =>
         new Command("tim-velocity", "Sets Tim's velocity")
@@ -116,10 +116,10 @@ internal static class Commands
                 braidGame.DetachTimFromGround();
             }
             OutputTimVelocity(braidGame);
-        });
+        }, watermark: true);
 
     private static Command TimSpeedMultiplierCommand =>
-        new Command("tim-speed", "Sets Tim's speed multiplier")
+        new Command("tim-speed", "Sets Tim's movement speed multiplier")
         {
             new Argument<float?>("multiplier") { Description = "Tim's speed multiplier" },
             TimSpeedMultiplierResetCommand,
@@ -128,10 +128,10 @@ internal static class Commands
             if (parseResult.GetValue<float?>("multiplier") is float multiplier)
                 braidGame.TimSpeedMultiplier = multiplier;
             OutputTimSpeedMultiplier(braidGame);
-        });
+        }, watermark: true);
 
     private static Command TimSpeedMultiplierResetCommand =>
-        new Command("reset", "Resets Tim's speed multiplier")
+        new Command("reset", "Resets Tim's movement speed multiplier")
         .SetBraidGameAction((braidGame, parseResult) =>
         {
             braidGame.TimSpeedMultiplier = 1;
@@ -139,7 +139,7 @@ internal static class Commands
         });
 
     private static Command TimJumpMultiplierCommand =>
-        new Command("tim-jump", "Sets Tim's jump multiplier")
+        new Command("tim-jump", "Sets Tim's jump speed multiplier")
         {
             new Argument<float?>("multiplier") { Description = "Tim's jump multiplier" },
             TimJumpMultiplierResetCommand
@@ -148,10 +148,10 @@ internal static class Commands
             if (parseResult.GetValue<float?>("multiplier") is float multiplier)
                 braidGame.TimJumpMultiplier = multiplier;
             OutputTimJumpMultiplier(braidGame);
-        });
+        }, watermark: true);
 
     private static Command TimJumpMultiplierResetCommand =>
-        new Command("reset", "Resets Tim's jump multiplier")
+        new Command("reset", "Resets Tim's jump speed multiplier")
         .SetBraidGameAction((braidGame, parseResult) =>
         {
             braidGame.TimJumpMultiplier = 1;
@@ -164,7 +164,7 @@ internal static class Commands
         {
             braidGame.FullSpeedInBackground = !braidGame.FullSpeedInBackground;
             OutputFullSpeedInBackground(braidGame);
-        });
+        }, watermark: true);
 
     private static Command ToggleDebugInfoCommand =>
         new Command("debug-info", "Toggles in-game debug info")
@@ -174,7 +174,7 @@ internal static class Commands
             OutputShowDebugInfo(braidGame);
         });
 
-    private static Command SetBraidGameAction(this Command cmd, Action<BraidGame, ParseResult> action)
+    private static Command SetBraidGameAction(this Command cmd, Action<BraidGame, ParseResult> action, bool watermark = false)
     {
         cmd.SetAction(parseResult =>
         {
@@ -191,6 +191,9 @@ internal static class Commands
                 OutputError("Only Steam version of Braid is supported");
                 return 1;
             }
+
+            if (watermark)
+                braidGame.AddWatermark();
 
             action(braidGame, parseResult);
             return 0;
