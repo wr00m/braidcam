@@ -84,9 +84,15 @@ internal static class Commands
         {
             var relative = parseResult.GetValue<bool>("--relative");
             if (parseResult.GetValue<float?>("x") is float x)
+            {
                 braidGame.TimPositionX = relative ? braidGame.TimPositionX + x : x;
+                braidGame.DetachTimFromGround();
+            }
             if (parseResult.GetValue<float?>("y") is float y)
+            {
                 braidGame.TimPositionY = relative ? braidGame.TimPositionY + y : y;
+                braidGame.DetachTimFromGround();
+            }
             OutputTimPosition(braidGame);
         });
 
@@ -100,9 +106,15 @@ internal static class Commands
         {
             var relative = parseResult.GetValue<bool>("--relative");
             if (parseResult.GetValue<float?>("x") is float x)
+            {
                 braidGame.TimVelocityX = relative ? braidGame.TimVelocityX + x : x;
+                braidGame.DetachTimFromGround();
+            }
             if (parseResult.GetValue<float?>("y") is float y)
+            {
                 braidGame.TimVelocityY = relative ? braidGame.TimVelocityY + y : y;
+                braidGame.DetachTimFromGround();
+            }
             OutputTimVelocity(braidGame);
         });
 

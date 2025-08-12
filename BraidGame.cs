@@ -97,6 +97,12 @@ internal class BraidGame : IDisposable
     private readonly IntPtr[] _timPointerPath = [0x400000 + 0x001f6de8, 0x30, 0xc4, 0x8];
     private IntPtr GetTimAddr(int offset) => _processMemoryHandler.GetAddressFromPointerPath(_timPointerPath) + offset;
 
+    public void DetachTimFromGround()
+    {
+        const int _timSupportedByPortableIdOffset = 0x78;
+        _processMemoryHandler.WriteInt(GetTimAddr(_timSupportedByPortableIdOffset), 0);
+    }
+
     private const int _timPositionXOffset = 0x14;
     public float TimPositionX
     {

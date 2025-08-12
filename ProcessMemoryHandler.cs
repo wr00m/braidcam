@@ -44,5 +44,5 @@ internal class ProcessMemoryHandler : IDisposable
     [DllImport("kernel32.dll", SetLastError = true)] static extern bool WriteProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, uint nSize, out int lpNumberOfBytesWritten);
     [DllImport("kernel32.dll")] static extern int CloseHandle(IntPtr hProcess);
     [DllImport("kernel32.dll", SetLastError = true)] static extern IntPtr CreateRemoteThread(IntPtr hProcess, IntPtr lpThreadAttributes, uint dwStackSize, IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, out IntPtr lpThreadId);
-    private enum ProcessAccessFlags : uint { All = 0x001F0FFF }
+    private enum ProcessAccessFlags : uint { All = 0x001f0fff }
 }
