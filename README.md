@@ -19,4 +19,4 @@ braidkit debug-info            // Toggle in-game debug info
 braidkit -h                    // Show help
 ```
 
-![Screenshot](braidkit_screenshot.png)
+![Screenshot](braidkit_screenshot.jpg)
