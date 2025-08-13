@@ -13,6 +13,7 @@ internal static class Commands
             TimVelocityCommand,
             TimSpeedMultiplierCommand,
             TimJumpMultiplierCommand,
+            EntityFlagsCommand,
             ToggleFullSpeedInBackgroundCommand,
             ToggleDebugInfoCommand,
         };
@@ -83,15 +84,16 @@ internal static class Commands
         }.SetBraidGameAction((braidGame, parseResult) =>
         {
             var relative = parseResult.GetValue<bool>("--relative");
+            var tim = braidGame.GetTim();
             if (parseResult.GetValue<float?>("x") is float x)
             {
-                braidGame.TimPositionX = relative ? braidGame.TimPositionX + x : x;
-                braidGame.DetachTimFromGround();
+                tim.PositionX = relative ? tim.PositionX + x : x;
+                tim.DetachFromGround();
             }
             if (parseResult.GetValue<float?>("y") is float y)
             {
-                braidGame.TimPositionY = relative ? braidGame.TimPositionY + y : y;
-                braidGame.DetachTimFromGround();
+                tim.PositionY = relative ? tim.PositionY + y : y;
+                tim.DetachFromGround();
             }
             OutputTimPosition(braidGame);
         }, watermark: true);
@@ -105,15 +107,16 @@ internal static class Commands
         }.SetBraidGameAction((braidGame, parseResult) =>
         {
             var relative = parseResult.GetValue<bool>("--relative");
+            var tim = braidGame.GetTim();
             if (parseResult.GetValue<float?>("x") is float x)
             {
-                braidGame.TimVelocityX = relative ? braidGame.TimVelocityX + x : x;
-                braidGame.DetachTimFromGround();
+                tim.VelocityX = relative ? tim.VelocityX + x : x;
+                tim.DetachFromGround();
             }
             if (parseResult.GetValue<float?>("y") is float y)
             {
-                braidGame.TimVelocityY = relative ? braidGame.TimVelocityY + y : y;
-                braidGame.DetachTimFromGround();
+                tim.VelocityY = relative ? tim.VelocityY + y : y;
+                tim.DetachFromGround();
             }
             OutputTimVelocity(braidGame);
         }, watermark: true);
@@ -174,6 +177,55 @@ internal static class Commands
             OutputShowDebugInfo(braidGame);
         });
 
+    private enum SelectEntity { All, Tim, ClosestToTim }
+    private enum OnOff { Off, On }
+    private static Command EntityFlagsCommand =>
+        new Command("entity-flag", "Sets behavior flags for game entities")
+        {
+            // TODO: Reactivate ClosestToTim when it's working properly
+            new Argument<SelectEntity>("entity").AcceptOnlyFromAmong(SelectEntity.All.ToString(), SelectEntity.Tim.ToString()),
+            new Argument<EntityFlags>("flag"),
+            new Argument<OnOff>("value"),
+        }
+        .SetBraidGameAction((braidGame, parseResult) =>
+        {
+            var entity = parseResult.GetRequiredValue<SelectEntity>("entity");
+            var entityFlag = parseResult.GetRequiredValue<EntityFlags>("flag");
+            var value = parseResult.GetRequiredValue<OnOff>("value");
+
+            var entities = braidGame.GetEntities();
+            var tim = entities.Single(x => x.EntityType == EntityType.Tim);
+
+            entities = value switch
+            {
+                OnOff.On => entities.Where(x => !x.EntityFlags.HasFlag(entityFlag)).ToList(),
+                OnOff.Off => entities.Where(x => x.EntityFlags.HasFlag(entityFlag)).ToList(),
+                _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
+            };
+
+            entities = entity switch
+            {
+                SelectEntity.All => entities,
+                SelectEntity.Tim => [.. entities.Where(x => x == tim)],
+                SelectEntity.ClosestToTim => [.. entities.Where(x => x != tim).OrderBy(x => x.GetDistanceSquared(tim)).Take(1)],
+                _ => throw new ArgumentOutOfRangeException(nameof(entity), entity, null),
+            };
+
+            switch (value)
+            {
+                case OnOff.On:
+                    entities.ForEach(x => x.EntityFlags |= entityFlag);
+                    break;
+                case OnOff.Off:
+                    entities.ForEach(x => x.EntityFlags &= ~entityFlag);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(value), value, null);
+            }
+
+            Console.WriteLine($"Flag turned {value.ToString().ToLower()} for {entities.Count} {(entities.Count == 1 ? "entity" : "entities")}");
+        }, watermark: true);
+
     private static Command SetBraidGameAction(this Command cmd, Action<BraidGame, ParseResult> action, bool watermark = false)
     {
         cmd.SetAction(parseResult =>
@@ -211,8 +263,8 @@ internal static class Commands
 
     private static void OutputCameraPosition(BraidGame braidGame) => Console.WriteLine($"Camera is {(braidGame.CameraLock ? "locked" : "unlocked")} at x={braidGame.CameraPositionX:0.##} y={braidGame.CameraPositionY:0.##}");
     private static void OutputCameraZoom(BraidGame braidGame) => Console.WriteLine($"Camera zoom is {braidGame.Zoom:0.##}");
-    private static void OutputTimPosition(BraidGame braidGame) => Console.WriteLine($"Tim's position is x={braidGame.TimPositionX:0.##} y={braidGame.TimPositionY:0.##}");
-    private static void OutputTimVelocity(BraidGame braidGame) => Console.WriteLine($"Tim's velocity is x={braidGame.TimVelocityX:0.##} y={braidGame.TimVelocityY:0.##}");
+    private static void OutputTimPosition(BraidGame braidGame) => Console.WriteLine($"Tim's position is x={braidGame.GetTim().PositionX:0.##} y={braidGame.GetTim().PositionY:0.##}");
+    private static void OutputTimVelocity(BraidGame braidGame) => Console.WriteLine($"Tim's velocity is x={braidGame.GetTim().VelocityX:0.##} y={braidGame.GetTim().VelocityY:0.##}");
     private static void OutputTimSpeedMultiplier(BraidGame braidGame) => Console.WriteLine($"Tim's speed multiplier is {braidGame.TimSpeedMultiplier:0.##}");
     private static void OutputTimJumpMultiplier(BraidGame braidGame) => Console.WriteLine($"Tim's jump multiplier is {braidGame.TimJumpMultiplier:0.##}");
     private static void OutputFullSpeedInBackground(BraidGame braidGame) => Console.WriteLine($"Full game speed in background is {(braidGame.FullSpeedInBackground ? "on" : "off")}");

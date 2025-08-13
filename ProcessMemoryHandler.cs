@@ -19,6 +19,8 @@ internal class ProcessMemoryHandler : IDisposable
 
     public bool ReadBool(IntPtr addr) => ReadByte(addr) != 0;
     public void WriteBool(IntPtr addr, bool val) => WriteByte(addr, val ? (byte)1 : (byte)0);
+    public uint ReadUInt(IntPtr addr) => BitConverter.ToUInt32(ReadBytes(addr, sizeof(uint)), 0);
+    public void WriteUInt(IntPtr addr, uint val) => WriteBytes(addr, BitConverter.GetBytes(val));
     public int ReadInt(IntPtr addr) => BitConverter.ToInt32(ReadBytes(addr, sizeof(int)), 0);
     public void WriteInt(IntPtr addr, int val) => WriteBytes(addr, BitConverter.GetBytes(val));
     public float ReadFloat(IntPtr addr) => BitConverter.ToSingle(ReadBytes(addr, sizeof(float)), 0);
@@ -37,6 +39,20 @@ internal class ProcessMemoryHandler : IDisposable
         foreach (var offset in pointerPath)
             addr = ReadInt(addr + offset);
         return addr;
+    }
+
+    public string ReadNullTerminatedString(IntPtr addr)
+    {
+        addr = ReadInt(addr);
+        var result = "";
+        for (var i = 0; true; i++)
+        {
+            var c = (char)ReadByte(addr + i);
+            if (c == '\0')
+                break;
+            result += c;
+        }
+        return result;
     }
 
     [DllImport("kernel32.dll")] static extern IntPtr OpenProcess(ProcessAccessFlags dwDesiredAccess, [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle, int dwProcessId);

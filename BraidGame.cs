@@ -95,41 +95,7 @@ internal class BraidGame : IDisposable
     }
 
     private readonly IntPtr[] _timPointerPath = [0x400000 + 0x001f6de8, 0x30, 0xc4, 0x8];
-    private IntPtr GetTimAddr(int offset) => _processMemoryHandler.GetAddressFromPointerPath(_timPointerPath) + offset;
-
-    public void DetachTimFromGround()
-    {
-        const int _timSupportedByPortableIdOffset = 0x78;
-        _processMemoryHandler.WriteInt(GetTimAddr(_timSupportedByPortableIdOffset), 0);
-    }
-
-    private const int _timPositionXOffset = 0x14;
-    public float TimPositionX
-    {
-        get => _processMemoryHandler.ReadFloat(GetTimAddr(_timPositionXOffset));
-        set => _processMemoryHandler.WriteFloat(GetTimAddr(_timPositionXOffset), value);
-    }
-
-    private const int _timPositionYOffset = _timPositionXOffset + sizeof(int);
-    public float TimPositionY
-    {
-        get => _processMemoryHandler.ReadFloat(GetTimAddr(_timPositionYOffset));
-        set => _processMemoryHandler.WriteFloat(GetTimAddr(_timPositionYOffset), value);
-    }
-
-    private const int _timVelocityXOffset = 0x1c;
-    public float TimVelocityX
-    {
-        get => _processMemoryHandler.ReadFloat(GetTimAddr(_timVelocityXOffset));
-        set => _processMemoryHandler.WriteFloat(GetTimAddr(_timVelocityXOffset), value);
-    }
-
-    private const int _timVelocityYOffset = _timVelocityXOffset + sizeof(int);
-    public float TimVelocityY
-    {
-        get => _processMemoryHandler.ReadFloat(GetTimAddr(_timVelocityYOffset));
-        set => _processMemoryHandler.WriteFloat(GetTimAddr(_timVelocityYOffset), value);
-    }
+    public Entity GetTim() => new(_processMemoryHandler, _processMemoryHandler.GetAddressFromPointerPath(_timPointerPath));
 
     private const IntPtr _timRunSpeedAddr = 0x005f6f08;
     private const double _timRunSpeedDefault = 200;
@@ -172,4 +138,27 @@ internal class BraidGame : IDisposable
     }
 
     public void AddWatermark() => _processMemoryHandler.WriteInt(0x00507bda, 0x00579e10);
+
+    public List<Entity> GetEntities()
+    {
+        const int entityManagerPointerAddr = 0x005f6de8;
+        var entityManagerAddr = _processMemoryHandler.ReadInt(entityManagerPointerAddr);
+        var entityAddrs = ReadAutoArrayOfPointers(entityManagerAddr + 0xc);
+        var entities = entityAddrs.Select(x => new Entity(_processMemoryHandler, x)).ToList();
+        return entities;
+    }
+
+    private List<IntPtr> ReadAutoArrayOfPointers(int addr)
+    {
+        var result = new List<IntPtr>();
+        var count = _processMemoryHandler.ReadInt(addr);
+        var arrayAddr = _processMemoryHandler.ReadInt(addr + sizeof(int) * 2);
+        for (int i = 0; i < count; i++)
+        {
+            // TODO: Read all values at once, then split
+            var itemAddr = _processMemoryHandler.ReadInt(arrayAddr + i * sizeof(int));
+            result.Add(itemAddr);
+        }
+        return result;
+    }
 }
