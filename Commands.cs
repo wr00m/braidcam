@@ -32,9 +32,9 @@ internal static class Commands
             var relative = parseResult.GetValue<bool>("--relative");
             braidGame.CameraLock = true;
             if (parseResult.GetValue<float?>("x") is float x)
-                braidGame.CameraPositionX = relative ? braidGame.CameraPositionX + x : x;
+                braidGame.CameraPositionX.Value = relative ? braidGame.CameraPositionX.Value + x : x;
             if (parseResult.GetValue<float?>("y") is float y)
-                braidGame.CameraPositionY = relative ? braidGame.CameraPositionY + y : y;
+                braidGame.CameraPositionY.Value = relative ? braidGame.CameraPositionY.Value + y : y;
             OutputCameraPosition(braidGame);
         });
 
@@ -87,12 +87,12 @@ internal static class Commands
             var tim = braidGame.GetTim();
             if (parseResult.GetValue<float?>("x") is float x)
             {
-                tim.PositionX = relative ? tim.PositionX + x : x;
+                tim.PositionX.Value = relative ? tim.PositionX.Value + x : x;
                 tim.DetachFromGround();
             }
             if (parseResult.GetValue<float?>("y") is float y)
             {
-                tim.PositionY = relative ? tim.PositionY + y : y;
+                tim.PositionY.Value = relative ? tim.PositionY.Value + y : y;
                 tim.DetachFromGround();
             }
             OutputTimPosition(braidGame);
@@ -110,12 +110,12 @@ internal static class Commands
             var tim = braidGame.GetTim();
             if (parseResult.GetValue<float?>("x") is float x)
             {
-                tim.VelocityX = relative ? tim.VelocityX + x : x;
+                tim.VelocityX.Value = relative ? tim.VelocityX.Value + x : x;
                 tim.DetachFromGround();
             }
             if (parseResult.GetValue<float?>("y") is float y)
             {
-                tim.VelocityY = relative ? tim.VelocityY + y : y;
+                tim.VelocityY.Value = relative ? tim.VelocityY.Value + y : y;
                 tim.DetachFromGround();
             }
             OutputTimVelocity(braidGame);
@@ -173,7 +173,7 @@ internal static class Commands
         new Command("debug-info", "Toggles in-game debug info")
         .SetBraidGameAction((braidGame, parseResult) =>
         {
-            braidGame.DrawDebugInfo = !braidGame.DrawDebugInfo;
+            braidGame.DrawDebugInfo.Value = !braidGame.DrawDebugInfo.Value;
             OutputShowDebugInfo(braidGame);
         });
 
@@ -182,8 +182,7 @@ internal static class Commands
     private static Command EntityFlagsCommand =>
         new Command("entity-flag", "Sets behavior flags for game entities")
         {
-            // TODO: Reactivate ClosestToTim when it's working properly
-            new Argument<SelectEntity>("entity").AcceptOnlyFromAmong(SelectEntity.All.ToString(), SelectEntity.Tim.ToString()),
+            new Argument<SelectEntity>("entity"),
             new Argument<EntityFlags>("flag"),
             new Argument<OnOff>("value"),
         }
@@ -194,12 +193,12 @@ internal static class Commands
             var value = parseResult.GetRequiredValue<OnOff>("value");
 
             var entities = braidGame.GetEntities();
-            var tim = entities.Single(x => x.EntityType == EntityType.Tim);
+            var tim = entities.Single(x => x.EntityType.Value == EntityType.Tim);
 
             entities = value switch
             {
-                OnOff.On => entities.Where(x => !x.EntityFlags.HasFlag(entityFlag)).ToList(),
-                OnOff.Off => entities.Where(x => x.EntityFlags.HasFlag(entityFlag)).ToList(),
+                OnOff.On => entities.Where(x => !x.EntityFlags.Value.HasFlag(entityFlag)).ToList(),
+                OnOff.Off => entities.Where(x => x.EntityFlags.Value.HasFlag(entityFlag)).ToList(),
                 _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
             };
 
@@ -207,6 +206,7 @@ internal static class Commands
             {
                 SelectEntity.All => entities,
                 SelectEntity.Tim => [.. entities.Where(x => x == tim)],
+                // TODO: ClosestToTim isn't working as expected -- are there invisible entities that interfere?
                 SelectEntity.ClosestToTim => [.. entities.Where(x => x != tim).OrderBy(x => x.GetDistanceSquared(tim)).Take(1)],
                 _ => throw new ArgumentOutOfRangeException(nameof(entity), entity, null),
             };
@@ -214,10 +214,10 @@ internal static class Commands
             switch (value)
             {
                 case OnOff.On:
-                    entities.ForEach(x => x.EntityFlags |= entityFlag);
+                    entities.ForEach(x => x.EntityFlags.Value |= entityFlag);
                     break;
                 case OnOff.Off:
-                    entities.ForEach(x => x.EntityFlags &= ~entityFlag);
+                    entities.ForEach(x => x.EntityFlags.Value &= ~entityFlag);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(value), value, null);
@@ -268,5 +268,5 @@ internal static class Commands
     private static void OutputTimSpeedMultiplier(BraidGame braidGame) => Console.WriteLine($"Tim's speed multiplier is {braidGame.TimSpeedMultiplier:0.##}");
     private static void OutputTimJumpMultiplier(BraidGame braidGame) => Console.WriteLine($"Tim's jump multiplier is {braidGame.TimJumpMultiplier:0.##}");
     private static void OutputFullSpeedInBackground(BraidGame braidGame) => Console.WriteLine($"Full game speed in background is {(braidGame.FullSpeedInBackground ? "on" : "off")}");
-    private static void OutputShowDebugInfo(BraidGame braidGame) => Console.WriteLine($"Debug info is {(braidGame.DrawDebugInfo ? "on" : "off")}");
+    private static void OutputShowDebugInfo(BraidGame braidGame) => Console.WriteLine($"Debug info is {(braidGame.DrawDebugInfo.Value ? "on" : "off")}");
 }

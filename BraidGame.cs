@@ -2,22 +2,13 @@
 
 namespace BraidKit;
 
-internal class BraidGame : IDisposable
+internal class BraidGame(Process _process, ProcessMemoryHandler _processMemoryHandler) : IDisposable
 {
     public static BraidGame? GetRunningInstance()
     {
         var process = Process.GetProcessesByName("braid").FirstOrDefault();
-        var braidGame = process != null ? new BraidGame(process) : null;
+        var braidGame = process != null ? new BraidGame(process, new(process.Id)) : null;
         return braidGame;
-    }
-
-    private readonly Process _process;
-    private readonly ProcessMemoryHandler _processMemoryHandler;
-
-    private BraidGame(Process process)
-    {
-        _process = process;
-        _processMemoryHandler = new(process.Id);
     }
 
     public void Dispose()
@@ -51,114 +42,67 @@ internal class BraidGame : IDisposable
         set => CameraLockX = CameraLockY = value;
     }
 
-    private const IntPtr _cameraPositionXAddr = 0x5f6abc;
-    public float CameraPositionX
-    {
-        get => _processMemoryHandler.ReadFloat(_cameraPositionXAddr);
-        set => _processMemoryHandler.WriteFloat(_cameraPositionXAddr, value);
-    }
+    public GameValue<float> CameraPositionX { get; } = new(_processMemoryHandler, 0x5f6abc);
+    public GameValue<float> CameraPositionY { get; } = new(_processMemoryHandler, 0x5f6ac0);
+    public GameValue<int> IdealWidth { get; } = new(_processMemoryHandler, 0x5f6a90, 1280);
+    public GameValue<int> IdealHeight { get; } = new(_processMemoryHandler, 0x5f6a94, 720);
 
-    private const IntPtr _cameraPositionYAddr = _cameraPositionXAddr + sizeof(float);
-    public float CameraPositionY
-    {
-        get => _processMemoryHandler.ReadFloat(_cameraPositionYAddr);
-        set => _processMemoryHandler.WriteFloat(_cameraPositionYAddr, value);
-    }
-
-    private const IntPtr _idealWidthAddr = 0x005f6a90;
-    private int IdealWidth
-    {
-        get => _processMemoryHandler.ReadInt(_idealWidthAddr);
-        set => _processMemoryHandler.WriteInt(_idealWidthAddr, value);
-    }
-
-    private const IntPtr _idealHeightAddr = _idealWidthAddr + sizeof(int);
-    private int IdealHeight
-    {
-        get => _processMemoryHandler.ReadInt(_idealHeightAddr);
-        set => _processMemoryHandler.WriteInt(_idealHeightAddr, value);
-    }
-
-    private const int _defaultIdealWidth = 1280;
-    private const int _defaultIdealHeight = 720;
-    private const IntPtr _updatePostprocessFxAddr = 0x004f8960;
     public float Zoom
     {
-        get => _defaultIdealWidth / (float)IdealWidth;
+        get => IdealWidth.DefaultValue / (float)IdealWidth.Value;
         set
         {
+            IdealWidth.Value = (int)Math.Round(IdealWidth.DefaultValue / value);
+            IdealHeight.Value = (int)Math.Round(IdealHeight.DefaultValue / value);
+
             // TODO: Fix issues with the in-game menu caused by zooming
-            IdealWidth = (int)Math.Round(_defaultIdealWidth / value);
-            IdealHeight = (int)Math.Round(_defaultIdealHeight / value);
+            const IntPtr _updatePostprocessFxAddr = 0x004f8960;
             _processMemoryHandler.CallFunction(_updatePostprocessFxAddr);
         }
     }
 
-    private readonly IntPtr[] _timPointerPath = [0x400000 + 0x001f6de8, 0x30, 0xc4, 0x8];
-    public Entity GetTim() => new(_processMemoryHandler, _processMemoryHandler.GetAddressFromPointerPath(_timPointerPath));
+    private PointerPath TimPointerPath { get; } = new(_processMemoryHandler, 0x5f6de8, 0x30, 0xc4, 0x8);
+    public Entity GetTim() => new(_processMemoryHandler, TimPointerPath.GetAddress());
 
-    private const IntPtr _timRunSpeedAddr = 0x005f6f08;
-    private const double _timRunSpeedDefault = 200;
-    private const IntPtr _timAirSpeedAddr = 0x005f6f30;
-    private const double _timAirSpeedDefault = 200;
-    private const IntPtr _timClimbSpeedAddr = 0x005f6f20;
-    private const double _timClimbSpeedDefault = 173.3;
+    private GameValue<double> TimRunSpeed { get; } = new(_processMemoryHandler, 0x5f6f08, 200);
+    private GameValue<double> TimAirSpeed { get; } = new(_processMemoryHandler, 0x5f6f30, 200);
+    private GameValue<double> TimClimbSpeed { get; } = new(_processMemoryHandler, 0x5f6f20, 173.3);
     public float TimSpeedMultiplier
     {
-        get => (float)(_processMemoryHandler.ReadDouble(_timRunSpeedAddr) / _timRunSpeedDefault);
+        get => (float)(TimRunSpeed.Value / TimRunSpeed.DefaultValue);
         set
         {
-            _processMemoryHandler.WriteDouble(_timRunSpeedAddr, _timRunSpeedDefault * value);
-            _processMemoryHandler.WriteDouble(_timAirSpeedAddr, _timAirSpeedDefault * value);
-            _processMemoryHandler.WriteDouble(_timClimbSpeedAddr, _timClimbSpeedDefault * value);
+            TimRunSpeed.Value = TimRunSpeed.DefaultValue * value;
+            TimAirSpeed.Value = TimAirSpeed.DefaultValue * value;
+            TimClimbSpeed.Value = TimClimbSpeed.DefaultValue * value;
         }
     }
 
-    private const IntPtr _timJumpSpeedAddr = 0x005f6f28;
-    private const double _timJumpSpeedDefault = 360;
+    private GameValue<double> TimJumpSpeed { get; } = new(_processMemoryHandler, 0x5f6f28, 360);
     public float TimJumpMultiplier
     {
-        get => (float)(_processMemoryHandler.ReadDouble(_timJumpSpeedAddr) / _timJumpSpeedDefault);
-        set => _processMemoryHandler.WriteDouble(_timJumpSpeedAddr, _timJumpSpeedDefault * value);
+        get => (float)(TimJumpSpeed.Value / TimJumpSpeed.DefaultValue);
+        set => TimJumpSpeed.Value = TimJumpSpeed.DefaultValue * value;
     }
 
-    private const IntPtr _drawDebugInfoAddr = 0x005f6dcf;
-    public bool DrawDebugInfo
-    {
-        get => _processMemoryHandler.ReadBool(_drawDebugInfoAddr);
-        set => _processMemoryHandler.WriteBool(_drawDebugInfoAddr, value);
-    }
+    public GameValue<bool> DrawDebugInfo { get; } = new(_processMemoryHandler, 0x5f6dcf);
 
-    private const IntPtr _sleepPaddingHasFocusAddr = 0x004b51ec;
+    private GameValue<byte> SleepPaddingHasFocusCompareValue { get; } = new(_processMemoryHandler, 0x4b51ec, 0x0);
     private const byte _invalidBool = 0x2;
     public bool FullSpeedInBackground
     {
-        get => _processMemoryHandler.ReadByte(_sleepPaddingHasFocusAddr) == _invalidBool;
-        set => _processMemoryHandler.WriteByte(_sleepPaddingHasFocusAddr, value ? _invalidBool : (byte)0x0);
+        get => SleepPaddingHasFocusCompareValue.Value == _invalidBool;
+        set => SleepPaddingHasFocusCompareValue.Value = value ? _invalidBool : SleepPaddingHasFocusCompareValue.DefaultValue;
     }
 
-    public void AddWatermark() => _processMemoryHandler.WriteInt(0x00507bda, 0x00579e10);
+    public void AddWatermark() => _processMemoryHandler.Write(0x00507bda, 0x00579e10);
 
     public List<Entity> GetEntities()
     {
         const int entityManagerPointerAddr = 0x005f6de8;
-        var entityManagerAddr = _processMemoryHandler.ReadInt(entityManagerPointerAddr);
-        var entityAddrs = ReadAutoArrayOfPointers(entityManagerAddr + 0xc);
+        var entityManagerAddr = _processMemoryHandler.Read<int>(entityManagerPointerAddr);
+        var entityAddrs = new AutoArray<int>(_processMemoryHandler, entityManagerAddr + 0xc).GetAllItems();
         var entities = entityAddrs.Select(x => new Entity(_processMemoryHandler, x)).ToList();
         return entities;
-    }
-
-    private List<IntPtr> ReadAutoArrayOfPointers(int addr)
-    {
-        var result = new List<IntPtr>();
-        var count = _processMemoryHandler.ReadInt(addr);
-        var arrayAddr = _processMemoryHandler.ReadInt(addr + sizeof(int) * 2);
-        for (int i = 0; i < count; i++)
-        {
-            // TODO: Read all values at once, then split
-            var itemAddr = _processMemoryHandler.ReadInt(arrayAddr + i * sizeof(int));
-            result.Add(itemAddr);
-        }
-        return result;
     }
 }

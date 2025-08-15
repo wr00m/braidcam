@@ -1,64 +1,24 @@
 ﻿namespace BraidKit;
 
-internal class Entity
+internal class Entity(ProcessMemoryHandler _processMemoryHandler, IntPtr _addr)
 {
-    private readonly ProcessMemoryHandler _processMemoryHandler;
-    private readonly IntPtr _addr;
-    private const int _entityFlagsOffset = 0x10;
+    public GameValue<EntityType> EntityType { get; } = new(_processMemoryHandler, _addr);
+    public GameValue<EntityFlags> EntityFlags { get; } = new(_processMemoryHandler, _addr + 0x10);
+    public GameValue<float> PositionX { get; } = new(_processMemoryHandler, _addr + 0x14);
+    public GameValue<float> PositionY { get; } = new(_processMemoryHandler, _addr + 0x18);
+    public GameValue<float> VelocityX { get; } = new(_processMemoryHandler, _addr + 0x1c);
+    public GameValue<float> VelocityY { get; } = new(_processMemoryHandler, _addr + 0x20);
+    public GameValue<float> Width { get; } = new(_processMemoryHandler, _addr + 0x24);
+    public GameValue<float> Height { get; } = new(_processMemoryHandler, _addr + 0x28);
+    private GameValue<int> SupportedByPortableId { get; } = new(_processMemoryHandler, _addr + 0x78);
 
-    public Entity(ProcessMemoryHandler processMemoryHandler, IntPtr addr)
-    {
-        _processMemoryHandler = processMemoryHandler;
-        _addr = addr;
-    }
-
-    public EntityType EntityType => (EntityType)_processMemoryHandler.ReadUInt(_addr);
-
-    public EntityFlags EntityFlags
-    {
-        get => (EntityFlags)_processMemoryHandler.ReadUInt(_addr + _entityFlagsOffset);
-        set => _processMemoryHandler.WriteUInt(_addr + _entityFlagsOffset, (uint)value);
-    }
+    public void DetachFromGround() => SupportedByPortableId.Value = 0;
 
     public float GetDistanceSquared(Entity other)
     {
-        var dx = other.PositionX - PositionX;
-        var dy = other.PositionY - PositionY;
+        var dx = other.PositionX.Value - PositionX.Value;
+        var dy = other.PositionY.Value - PositionY.Value;
         return dx * dx + dy * dy;
-    }
-
-    public void DetachFromGround()
-    {
-        const int _supportedByPortableIdOffset = 0x78;
-        _processMemoryHandler.WriteInt(_addr + _supportedByPortableIdOffset, 0);
-    }
-
-    private const int _positionXOffset = 0x14;
-    public float PositionX
-    {
-        get => _processMemoryHandler.ReadFloat(_addr + _positionXOffset);
-        set => _processMemoryHandler.WriteFloat(_addr + _positionXOffset, value);
-    }
-
-    private const int _positionYOffset = _positionXOffset + sizeof(int);
-    public float PositionY
-    {
-        get => _processMemoryHandler.ReadFloat(_addr + _positionYOffset);
-        set => _processMemoryHandler.WriteFloat(_addr + _positionYOffset, value);
-    }
-
-    private const int _velocityXOffset = 0x1c;
-    public float VelocityX
-    {
-        get => _processMemoryHandler.ReadFloat(_addr + _velocityXOffset);
-        set => _processMemoryHandler.WriteFloat(_addr + _velocityXOffset, value);
-    }
-
-    private const int _velocityYOffset = _velocityXOffset + sizeof(int);
-    public float VelocityY
-    {
-        get => _processMemoryHandler.ReadFloat(_addr + _velocityYOffset);
-        set => _processMemoryHandler.WriteFloat(_addr + _velocityYOffset, value);
     }
 }
 
@@ -68,12 +28,13 @@ internal enum EntityFlags : uint
     // TODO: Identify more entity flags
     Hidden = 0x1,
     Immovable = 0x4,
-    CollidablePlatform = 0x10,
+    CollidablePlatformOrProjectile = 0x10,
     CollidableTerrain = 0x20,
     GreenGlow = 0x40,
     Climbable = 0x80,
     NoGravity = 0x4000,
     PurpleGlow = 0x10000,
+    // TODO: 0x2000000u is apparently something
 }
 
 internal enum EntityType

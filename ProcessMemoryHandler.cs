@@ -17,43 +17,40 @@ internal class ProcessMemoryHandler : IDisposable
             CloseHandle(_hProc);
     }
 
-    public bool ReadBool(IntPtr addr) => ReadByte(addr) != 0;
-    public void WriteBool(IntPtr addr, bool val) => WriteByte(addr, val ? (byte)1 : (byte)0);
-    public uint ReadUInt(IntPtr addr) => BitConverter.ToUInt32(ReadBytes(addr, sizeof(uint)), 0);
-    public void WriteUInt(IntPtr addr, uint val) => WriteBytes(addr, BitConverter.GetBytes(val));
-    public int ReadInt(IntPtr addr) => BitConverter.ToInt32(ReadBytes(addr, sizeof(int)), 0);
-    public void WriteInt(IntPtr addr, int val) => WriteBytes(addr, BitConverter.GetBytes(val));
-    public float ReadFloat(IntPtr addr) => BitConverter.ToSingle(ReadBytes(addr, sizeof(float)), 0);
-    public void WriteFloat(IntPtr addr, float val) => WriteBytes(addr, BitConverter.GetBytes(val));
-    public double ReadDouble(IntPtr addr) => BitConverter.ToDouble(ReadBytes(addr, sizeof(double)), 0);
-    public void WriteDouble(IntPtr addr, double val) => WriteBytes(addr, BitConverter.GetBytes(val));
-    public byte ReadByte(IntPtr addr) => ReadBytes(addr, 1)[0];
-    public void WriteByte(IntPtr addr, byte val) => WriteBytes(addr, [val]);
+    public T Read<T>(IntPtr addr) where T : unmanaged => FromBytes<T>(ReadBytes(addr, GetBlittableSize<T>()));
+    public void Write<T>(IntPtr addr, T val) where T : unmanaged => WriteBytes(addr, ToBytes(val));
     public byte[] ReadBytes(IntPtr addr, int count) { var buff = new byte[count]; ReadProcessMemory(_hProc, addr, buff, count, out _); return buff; }
     public void WriteBytes(IntPtr addr, byte[] bytes) => WriteProcessMemory(_hProc, addr, bytes, (uint)bytes.Length, out var _);
     public void CallFunction(IntPtr addr) => CreateRemoteThread(_hProc, IntPtr.Zero, 0, addr, IntPtr.Zero, 0, out _);
 
-    public IntPtr GetAddressFromPointerPath(IntPtr[] pointerPath)
-    {
-        IntPtr addr = 0;
-        foreach (var offset in pointerPath)
-            addr = ReadInt(addr + offset);
-        return addr;
-    }
-
     public string ReadNullTerminatedString(IntPtr addr)
     {
-        addr = ReadInt(addr);
+        addr = Read<int>(addr);
         var result = "";
         for (var i = 0; true; i++)
         {
-            var c = (char)ReadByte(addr + i);
+            var c = (char)Read<byte>(addr + i);
             if (c == '\0')
                 break;
             result += c;
         }
         return result;
     }
+
+    private static byte[] ToBytes<T>(T value) where T : unmanaged
+    {
+        var bytes = new byte[GetBlittableSize<T>()];
+        MemoryMarshal.Write(bytes, in value);
+        return bytes;
+    }
+
+    private static T FromBytes<T>(byte[] bytes) where T : unmanaged
+    {
+        return MemoryMarshal.Read<T>(bytes);
+    }
+
+    public static int GetBlittableSize<T>() => Marshal.SizeOf(GetBlittableType<T>());
+    private static Type GetBlittableType<T>() => typeof(T).IsEnum ? Enum.GetUnderlyingType(typeof(T)) : typeof(T);
 
     [DllImport("kernel32.dll")] static extern IntPtr OpenProcess(ProcessAccessFlags dwDesiredAccess, [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle, int dwProcessId);
     [DllImport("kernel32.dll", SetLastError = true)] static extern bool ReadProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, [Out] byte[] lpBuffer, int dwSize, out int lpNumberOfBytesRead);
