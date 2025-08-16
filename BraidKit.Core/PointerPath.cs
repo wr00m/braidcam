@@ -1,6 +1,6 @@
-﻿namespace BraidKit;
+﻿namespace BraidKit.Core;
 
-internal class PointerPath(ProcessMemoryHandler _processMemoryHandler, params IntPtr[] _addrOffsets)
+public class PointerPath(ProcessMemoryHandler _processMemoryHandler, params IntPtr[] _addrOffsets)
 {
     public IntPtr GetAddress()
     {

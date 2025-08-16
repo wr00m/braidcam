@@ -1,13 +1,20 @@
 ﻿using System.Diagnostics;
 
-namespace BraidKit;
+namespace BraidKit.Core;
 
-internal class BraidGame(Process _process, ProcessMemoryHandler _processMemoryHandler) : IDisposable
+public class BraidGame(Process _process, ProcessMemoryHandler _processMemoryHandler) : IDisposable
 {
-    public static BraidGame? GetRunningInstance()
+    public static BraidGame? GetFromOtherProcess()
     {
         var process = Process.GetProcessesByName("braid").FirstOrDefault();
         var braidGame = process != null ? new BraidGame(process, new(process.Id)) : null;
+        return braidGame;
+    }
+
+    public static BraidGame GetFromCurrentProcess()
+    {
+        var process = Process.GetCurrentProcess();
+        var braidGame = new BraidGame(process, new(process.Id));
         return braidGame;
     }
 
@@ -17,6 +24,7 @@ internal class BraidGame(Process _process, ProcessMemoryHandler _processMemoryHa
         _process.Dispose();
     }
 
+    public Process Process => _process;
     public bool IsSteamVersion => _process.Modules[0].ModuleMemorySize == 7663616;
 
     private static readonly byte[] _cameraEnabledBytes = [0xf3, 0x0f, 0x11];
@@ -113,6 +121,9 @@ internal class BraidGame(Process _process, ProcessMemoryHandler _processMemoryHa
         get => SleepPaddingHasFocusCompareValue.Value == _invalidBool;
         set => SleepPaddingHasFocusCompareValue.Value = value ? _invalidBool : SleepPaddingHasFocusCompareValue.DefaultValue;
     }
+
+    private PointerPath DisplaySystemPointerPath { get; } = new(_processMemoryHandler, 0xb2989c, 0x4);
+    public DisplaySystem DisplaySystem => new(_processMemoryHandler, DisplaySystemPointerPath.GetAddress());
 
     public void AddWatermark() => _processMemoryHandler.Write(0x00507bda, 0x00579e10);
 

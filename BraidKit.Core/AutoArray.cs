@@ -1,4 +1,6 @@
-﻿namespace BraidKit;
+﻿using System.Runtime.InteropServices;
+
+namespace BraidKit.Core;
 
 internal class AutoArray<T>(ProcessMemoryHandler _processMemoryHandler, IntPtr _addr) where T : unmanaged
 {
@@ -6,18 +8,13 @@ internal class AutoArray<T>(ProcessMemoryHandler _processMemoryHandler, IntPtr _
     private IntPtr GetFirstItemAddr() => _processMemoryHandler.Read<int>(_addr + sizeof(int) * 2);
     private int GetItemSize() => ProcessMemoryHandler.GetBlittableSize<T>();
 
-    public List<T> GetAllItems()
+    public T[] GetAllItems()
     {
-        var result = new List<T>();
-        var count = GetItemCount();
+        var itemCount = GetItemCount();
         var firstItemAddr = GetFirstItemAddr();
         var itemSize = GetItemSize();
-        for (int i = 0; i < count; i++)
-        {
-            // TODO: Read all values at once, then split, for better performance
-            var item = _processMemoryHandler.Read<T>(firstItemAddr + itemSize * i);
-            result.Add(item);
-        }
-        return result;
+        var bytes = _processMemoryHandler.ReadBytes(firstItemAddr, itemSize * itemCount);
+        var result = MemoryMarshal.Cast<byte, T>(bytes);
+        return result.ToArray();
     }
 }

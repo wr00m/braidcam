@@ -1,4 +1,5 @@
-﻿using System.CommandLine;
+﻿using BraidKit.Core;
+using System.CommandLine;
 
 namespace BraidKit;
 
@@ -13,11 +14,13 @@ internal static class Commands
             TimVelocityCommand,
             TimSpeedMultiplierCommand,
             TimJumpMultiplierCommand,
+            TimTouchesCommand,
             EntityFlagsCommand,
             ToggleFullSpeedInBackgroundCommand,
             ToggleDebugInfoCommand,
             IlTimerCommand,
             ResetPiecesCommand,
+            ToggleHitboxCommand,
         };
 
     private static Command CameraLockCommand =>
@@ -61,7 +64,8 @@ internal static class Commands
         {
             new Argument<float?>("zoom") { Description="Default is 1, <1 zooms out, >1 zooms in" },
             CameraZoomResetCommand,
-        }.SetBraidGameAction((braidGame, parseResult) =>
+        }
+        .SetBraidGameAction((braidGame, parseResult) =>
         {
             if (parseResult.GetValue<float?>("zoom") is float zoom)
                 braidGame.Zoom = zoom;
@@ -83,7 +87,8 @@ internal static class Commands
             new Argument<float?>("x") { Description = "Tim's x position" },
             new Argument<float?>("y") { Description = "Tim's y position" },
             new Option<bool>("--relative", "-r") { Description = "Relative to current position" },
-        }.SetBraidGameAction((braidGame, parseResult) =>
+        }
+        .SetBraidGameAction((braidGame, parseResult) =>
         {
             var relative = parseResult.GetValue<bool>("--relative");
             var tim = braidGame.GetTim();
@@ -106,7 +111,8 @@ internal static class Commands
             new Argument<float?>("x") { Description = "Tim's x velocity" },
             new Argument<float?>("y") { Description = "Tim's y velocity" },
             new Option<bool>("--relative", "-r") { Description = "Relative to current velocity" },
-        }.SetBraidGameAction((braidGame, parseResult) =>
+        }
+        .SetBraidGameAction((braidGame, parseResult) =>
         {
             var relative = parseResult.GetValue<bool>("--relative");
             var tim = braidGame.GetTim();
@@ -128,7 +134,8 @@ internal static class Commands
         {
             new Argument<float?>("multiplier") { Description = "Tim's speed multiplier" },
             TimSpeedMultiplierResetCommand,
-        }.SetBraidGameAction((braidGame, parseResult) =>
+        }
+        .SetBraidGameAction((braidGame, parseResult) =>
         {
             if (parseResult.GetValue<float?>("multiplier") is float multiplier)
                 braidGame.TimSpeedMultiplier = multiplier;
@@ -148,12 +155,24 @@ internal static class Commands
         {
             new Argument<float?>("multiplier") { Description = "Tim's jump multiplier" },
             TimJumpMultiplierResetCommand
-        }.SetBraidGameAction((braidGame, parseResult) =>
+        }
+        .SetBraidGameAction((braidGame, parseResult) =>
         {
             if (parseResult.GetValue<float?>("multiplier") is float multiplier)
                 braidGame.TimJumpMultiplier = multiplier;
             OutputTimJumpMultiplier(braidGame);
         }, watermark: true);
+
+    private static Command TimTouchesCommand =>
+        new Command("tim-touches", "Gets a list of entities that Tim is currently touching")
+        .SetBraidGameAction((braidGame, parseResult) =>
+        {
+            // Ignore pieced images, because they're everywhere...
+            var entities = braidGame.GetEntities().Where(x => x.EntityType != EntityType.PiecedImage).ToList();
+            var tim = entities.GetTim();
+            var touched = entities.Where(x => x != tim && x.RectangleIntersects(tim)).ToList();
+            OutputEntities(touched);
+        });
 
     private static Command TimJumpMultiplierResetCommand =>
         new Command("reset", "Resets Tim's jump speed multiplier")
@@ -179,53 +198,30 @@ internal static class Commands
             OutputShowDebugInfo(braidGame);
         });
 
-    private enum SelectEntity { All, Tim, ClosestToTim }
-    private enum OnOff { Off, On }
+    private enum BoolValue { False, True }
     private static Command EntityFlagsCommand =>
-        new Command("entity-flag", "Sets behavior flags for game entities")
+        new Command("entity-flag", "Sets behavior flags for game entities (experimental)")
         {
-            new Argument<SelectEntity>("entity"),
-            new Argument<EntityFlags>("flag"),
-            new Argument<OnOff>("value"),
+            new Option<EntityType>("--type", "-t") { Required = true },
+            new Option<EntityFlags>("--flag", "-f") { Required = true },
+            new Option<BoolValue>("--value", "-v") { Required = true },
         }
         .SetBraidGameAction((braidGame, parseResult) =>
         {
-            var entity = parseResult.GetRequiredValue<SelectEntity>("entity");
-            var entityFlag = parseResult.GetRequiredValue<EntityFlags>("flag");
-            var value = parseResult.GetRequiredValue<OnOff>("value");
+            var entityType = parseResult.GetRequiredValue<EntityType>("--type");
+            var entityFlag = parseResult.GetRequiredValue<EntityFlags>("--flag");
+            var flagValue = parseResult.GetRequiredValue<BoolValue>("--value") == BoolValue.True;
 
-            var entities = braidGame.GetEntities();
-            var tim = entities.Single(x => x.EntityType.Value == EntityType.Tim);
+            var entities = braidGame
+                .GetEntities()
+                .Where(x => x.EntityType == entityType)
+                .Where(x => x.EntityFlags.Value.HasFlag(entityFlag) != flagValue)
+                .ToList();
 
-            entities = value switch
-            {
-                OnOff.On => entities.Where(x => !x.EntityFlags.Value.HasFlag(entityFlag)).ToList(),
-                OnOff.Off => entities.Where(x => x.EntityFlags.Value.HasFlag(entityFlag)).ToList(),
-                _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
-            };
+            foreach (var entity in entities)
+                entity.EntityFlags.Value ^= entityFlag; // Toggle
 
-            entities = entity switch
-            {
-                SelectEntity.All => entities,
-                SelectEntity.Tim => [.. entities.Where(x => x == tim)],
-                // TODO: ClosestToTim isn't working as expected -- are there invisible entities that interfere?
-                SelectEntity.ClosestToTim => [.. entities.Where(x => x != tim).OrderBy(x => x.GetDistanceSquared(tim)).Take(1)],
-                _ => throw new ArgumentOutOfRangeException(nameof(entity), entity, null),
-            };
-
-            switch (value)
-            {
-                case OnOff.On:
-                    entities.ForEach(x => x.EntityFlags.Value |= entityFlag);
-                    break;
-                case OnOff.Off:
-                    entities.ForEach(x => x.EntityFlags.Value &= ~entityFlag);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(value), value, null);
-            }
-
-            Console.WriteLine($"Flag turned {value.ToString().ToLower()} for {entities.Count} {(entities.Count == 1 ? "entity" : "entities")}");
+            Console.WriteLine($"{entityFlag} set to {flagValue} for {entities.Count} {entityType}");
         }, watermark: true);
 
     private static Command IlTimerCommand =>
@@ -240,7 +236,7 @@ internal static class Commands
         .SetBraidGameAction((braidGame, parseResult) =>
         {
             var resetPieces = parseResult.GetRequiredValue<bool>("--reset-pieces");
-            Console.WriteLine("IL timing enabled. Press Ctrl+C to exit."); 
+            Console.WriteLine("IL timing enabled. Press Ctrl+C to exit.");
 
             var currentState = braidGame.TimLevelState.Value;
             var oldState = braidGame.TimLevelState.Value;
@@ -267,11 +263,11 @@ internal static class Commands
 
                 if (braidGame.TimEnterLevel)
                 {
-                    initialFrame = braidGame.FrameCount.Value;       
+                    initialFrame = braidGame.FrameCount.Value;
                 }
                 oldState = currentState;
-            };
-        }, watermark: true);
+            }
+        });
 
     private static Command ResetPiecesCommand =>
         new Command("reset-pieces", "Resets all puzzle pieces for current save")
@@ -280,11 +276,19 @@ internal static class Commands
             braidGame.ResetPieces();
         });
 
+    private static Command ToggleHitboxCommand =>
+        new Command("show-hitbox", "Toggles in-game hitbox overlay (experimental)")
+        .SetBraidGameAction((braidGame, parseResult) =>
+        {
+            var showHitboxes = braidGame.Process.ToggleHitboxes();
+            Console.WriteLine($"Toggled hitbox overlay {(showHitboxes ? "on" : "off")}");
+        });
+
     private static Command SetBraidGameAction(this Command cmd, Action<BraidGame, ParseResult> action, bool watermark = false)
     {
         cmd.SetAction(parseResult =>
         {
-            using var braidGame = BraidGame.GetRunningInstance();
+            using var braidGame = BraidGame.GetFromOtherProcess();
 
             if (braidGame is null)
             {
@@ -323,4 +327,5 @@ internal static class Commands
     private static void OutputTimJumpMultiplier(BraidGame braidGame) => Console.WriteLine($"Tim's jump multiplier is {braidGame.TimJumpMultiplier:0.##}");
     private static void OutputFullSpeedInBackground(BraidGame braidGame) => Console.WriteLine($"Full game speed in background is {(braidGame.FullSpeedInBackground ? "on" : "off")}");
     private static void OutputShowDebugInfo(BraidGame braidGame) => Console.WriteLine($"Debug info is {(braidGame.DrawDebugInfo.Value ? "on" : "off")}");
+    private static void OutputEntities(List<Entity> entities) => entities.ForEach(x => Console.WriteLine($"{x.EntityType} at x={x.PositionX.Value:0.##} y={x.PositionY.Value:0.##}"));
 }

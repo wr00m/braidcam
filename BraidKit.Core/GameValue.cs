@@ -1,6 +1,6 @@
-﻿namespace BraidKit;
+﻿namespace BraidKit.Core;
 
-internal class GameValue<T>(ProcessMemoryHandler _processMemoryHandler, IntPtr _addr, T? _defaultValue = default) where T : unmanaged
+public class GameValue<T>(ProcessMemoryHandler _processMemoryHandler, IntPtr _addr, T? _defaultValue = default) where T : unmanaged
 {
     public T DefaultValue => _defaultValue ?? throw new Exception("Missing default value");
     public T Value { get => Get(); set => Set(value); }
@@ -8,4 +8,5 @@ internal class GameValue<T>(ProcessMemoryHandler _processMemoryHandler, IntPtr _
     private void Set(T val) => _processMemoryHandler.Write(_addr, val);
 
     public override string? ToString() => Value.ToString();
+    public static implicit operator T(GameValue<T> gameValue) => gameValue.Value;
 }

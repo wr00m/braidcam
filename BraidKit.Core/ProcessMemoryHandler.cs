@@ -1,8 +1,8 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace BraidKit;
+namespace BraidKit.Core;
 
-internal class ProcessMemoryHandler : IDisposable
+public class ProcessMemoryHandler : IDisposable
 {
     private readonly IntPtr _hProc;
 
@@ -17,6 +17,7 @@ internal class ProcessMemoryHandler : IDisposable
             CloseHandle(_hProc);
     }
 
+    // TODO: Read/write memory with unsafe code if running within the braid.exe process (should be faster)
     public T Read<T>(IntPtr addr) where T : unmanaged => FromBytes<T>(ReadBytes(addr, GetBlittableSize<T>()));
     public void Write<T>(IntPtr addr, T val) where T : unmanaged => WriteBytes(addr, ToBytes(val));
     public byte[] ReadBytes(IntPtr addr, int count) { var buff = new byte[count]; ReadProcessMemory(_hProc, addr, buff, count, out _); return buff; }
