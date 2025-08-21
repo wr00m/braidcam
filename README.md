@@ -21,6 +21,9 @@ braidkit tim-jump 1.5                  // Set Tim's jump speed to 150 %
 braidkit entity-flag all greenglow off // Remove green glow from all objects
 braidkit entity-flag tim nogravity on  // Disable gravity for Tim
 braidkit bg-full-speed                 // Toggle game running at full speed in background
+braidkit il-timer					   // Prints level complete times on door entry (flag levels not supported)
+braidkit il-timer --reset-pieces       // Additionally resets all puzzle pieces on level entry
+braidkit reset-pieces				   // Removes all puzzle pieces on current save
 braidkit debug-info                    // Toggle in-game debug info
 braidkit -h                            // Show help
 ```
