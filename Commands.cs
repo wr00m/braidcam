@@ -16,6 +16,8 @@ internal static class Commands
             EntityFlagsCommand,
             ToggleFullSpeedInBackgroundCommand,
             ToggleDebugInfoCommand,
+            IlTimerCommand,
+            ResetPiecesCommand,
         };
 
     private static Command CameraLockCommand =>
@@ -225,6 +227,58 @@ internal static class Commands
 
             Console.WriteLine($"Flag turned {value.ToString().ToLower()} for {entities.Count} {(entities.Count == 1 ? "entity" : "entities")}");
         }, watermark: true);
+
+    private static Command IlTimerCommand =>
+        new Command("il-timer", "Prints level complete times (flag levels not supported)")
+        {
+            new Option<bool>("--reset-pieces", "-rp")
+            {
+                Description = "Reset ALL pieces on door entry",
+                DefaultValueFactory = _ => false
+            }
+        }
+        .SetBraidGameAction((braidGame, parseResult) =>
+        {
+            var resetPieces = parseResult.GetRequiredValue<bool>("--reset-pieces");
+            Console.WriteLine("IL timing enabled. Press Ctrl+C to exit."); 
+
+            var currentState = braidGame.TimLevelState.Value;
+            var oldState = braidGame.TimLevelState.Value;
+            var currentFrame = braidGame.FrameCount.Value;
+            var initialFrame = braidGame.FrameCount.Value;
+            while (true)
+            {
+                currentState = braidGame.TimLevelState.Value;
+                currentFrame = braidGame.FrameCount.Value;
+                if (oldState == currentState)
+                {
+                    continue;
+                }
+
+                if (braidGame.TimEnterDoor)
+                {
+                    Console.WriteLine($"\nLevel: {braidGame.TimWorld.Value}-{braidGame.TimLevel.Value}");
+                    Console.WriteLine($"Time: {((currentFrame - initialFrame) / 60.0).ToString("0.00")}");
+                    if (resetPieces)
+                    {
+                        braidGame.ResetPieces();
+                    }
+                }
+
+                if (braidGame.TimEnterLevel)
+                {
+                    initialFrame = braidGame.FrameCount.Value;       
+                }
+                oldState = currentState;
+            };
+        }, watermark: true);
+
+    private static Command ResetPiecesCommand =>
+        new Command("reset-pieces", "Resets all puzzle pieces for current save")
+        .SetBraidGameAction((braidGame, parseResult) =>
+        {
+            braidGame.ResetPieces();
+        });
 
     private static Command SetBraidGameAction(this Command cmd, Action<BraidGame, ParseResult> action, bool watermark = false)
     {

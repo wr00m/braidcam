@@ -61,6 +61,10 @@ internal class BraidGame(Process _process, ProcessMemoryHandler _processMemoryHa
         }
     }
 
+    private const IntPtr _initialPuzzlePieceAddr = 0x5f7584;
+    private const IntPtr _worldPuzzlePieceOffset = 0x18c;
+    private const IntPtr _individualPuzzlePieceOffset = 0x20;
+
     private PointerPath TimPointerPath { get; } = new(_processMemoryHandler, 0x5f6de8, 0x30, 0xc4, 0x8);
     public Entity GetTim() => new(_processMemoryHandler, TimPointerPath.GetAddress());
 
@@ -85,6 +89,21 @@ internal class BraidGame(Process _process, ProcessMemoryHandler _processMemoryHa
         set => TimJumpSpeed.Value = TimJumpSpeed.DefaultValue * value;
     }
 
+    public GameValue<int> TimLevelState { get; } = new(_processMemoryHandler, 0x5f93c0);
+    public bool TimEnterDoor
+    {
+        get => TimLevelState.Value == 1;
+    }
+    public bool TimEnterLevel
+    {
+        get => TimLevelState.Value == 4;
+    }
+
+    public GameValue<int> TimWorld { get; } = new(_processMemoryHandler, 0x5f718c);
+    public GameValue<int> TimLevel { get; } = new(_processMemoryHandler, 0x5f7190);
+
+    public GameValue<int> FrameCount { get; } = new(_processMemoryHandler, 0x5f94b0);
+
     public GameValue<bool> DrawDebugInfo { get; } = new(_processMemoryHandler, 0x5f6dcf);
 
     private GameValue<byte> SleepPaddingHasFocusCompareValue { get; } = new(_processMemoryHandler, 0x4b51ec, 0x0);
@@ -104,5 +123,16 @@ internal class BraidGame(Process _process, ProcessMemoryHandler _processMemoryHa
         var entityAddrs = new AutoArray<int>(_processMemoryHandler, entityManagerAddr + 0xc).GetAllItems();
         var entities = entityAddrs.Select(x => new Entity(_processMemoryHandler, x)).ToList();
         return entities;
+    }
+
+    public void ResetPieces()
+    {
+        for (int i = 0; i < 12; i++)
+        {
+            for (int j = 0; j < 5; j++)
+            {
+                _processMemoryHandler.Write(_initialPuzzlePieceAddr + _worldPuzzlePieceOffset * j + _individualPuzzlePieceOffset * i, 0);
+            }
+        }
     }
 }
