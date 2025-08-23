@@ -97,15 +97,9 @@ public class BraidGame(Process _process, ProcessMemoryHandler _processMemoryHand
         set => TimJumpSpeed.Value = TimJumpSpeed.DefaultValue * value;
     }
 
-    public GameValue<int> TimLevelState { get; } = new(_processMemoryHandler, 0x5f93c0);
-    public bool TimEnterDoor
-    {
-        get => TimLevelState.Value == 1;
-    }
-    public bool TimEnterLevel
-    {
-        get => TimLevelState.Value == 4;
-    }
+    public GameValue<int> TimLevelState { get; } = new(_processMemoryHandler, 0x5f93c0); // Level transition type
+    public bool TimEnterDoor => TimLevelState == 1;
+    public bool TimEnterLevel => TimLevelState == 4;
 
     public GameValue<int> TimWorld { get; } = new(_processMemoryHandler, 0x5f718c);
     public GameValue<int> TimLevel { get; } = new(_processMemoryHandler, 0x5f7190);
@@ -138,12 +132,9 @@ public class BraidGame(Process _process, ProcessMemoryHandler _processMemoryHand
 
     public void ResetPieces()
     {
-        for (int i = 0; i < 12; i++)
-        {
-            for (int j = 0; j < 5; j++)
-            {
-                _processMemoryHandler.Write(_initialPuzzlePieceAddr + _worldPuzzlePieceOffset * j + _individualPuzzlePieceOffset * i, 0);
-            }
-        }
+        // Note: Pieces in current level don't reset properly, but maybe that's a good thing for IL speedrunning
+        for (int world = 0; world < 5; world++)
+            for (int piece = 0; piece < 12; piece++)
+                _processMemoryHandler.Write(_initialPuzzlePieceAddr + _worldPuzzlePieceOffset * world + _individualPuzzlePieceOffset * piece, 0);
     }
 }

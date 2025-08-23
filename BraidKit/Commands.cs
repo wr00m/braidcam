@@ -37,9 +37,9 @@ internal static class Commands
             var relative = parseResult.GetValue<bool>("--relative");
             braidGame.CameraLock = true;
             if (parseResult.GetValue<float?>("x") is float x)
-                braidGame.CameraPositionX.Value = relative ? braidGame.CameraPositionX.Value + x : x;
+                braidGame.CameraPositionX.Value = relative ? braidGame.CameraPositionX + x : x;
             if (parseResult.GetValue<float?>("y") is float y)
-                braidGame.CameraPositionY.Value = relative ? braidGame.CameraPositionY.Value + y : y;
+                braidGame.CameraPositionY.Value = relative ? braidGame.CameraPositionY + y : y;
             OutputCameraPosition(braidGame);
         });
 
@@ -94,12 +94,12 @@ internal static class Commands
             var tim = braidGame.GetTim();
             if (parseResult.GetValue<float?>("x") is float x)
             {
-                tim.PositionX.Value = relative ? tim.PositionX.Value + x : x;
+                tim.PositionX.Value = relative ? tim.PositionX + x : x;
                 tim.DetachFromGround();
             }
             if (parseResult.GetValue<float?>("y") is float y)
             {
-                tim.PositionY.Value = relative ? tim.PositionY.Value + y : y;
+                tim.PositionY.Value = relative ? tim.PositionY + y : y;
                 tim.DetachFromGround();
             }
             OutputTimPosition(braidGame);
@@ -118,12 +118,12 @@ internal static class Commands
             var tim = braidGame.GetTim();
             if (parseResult.GetValue<float?>("x") is float x)
             {
-                tim.VelocityX.Value = relative ? tim.VelocityX.Value + x : x;
+                tim.VelocityX.Value = relative ? tim.VelocityX + x : x;
                 tim.DetachFromGround();
             }
             if (parseResult.GetValue<float?>("y") is float y)
             {
-                tim.VelocityY.Value = relative ? tim.VelocityY.Value + y : y;
+                tim.VelocityY.Value = relative ? tim.VelocityY + y : y;
                 tim.DetachFromGround();
             }
             OutputTimVelocity(braidGame);
@@ -227,44 +227,45 @@ internal static class Commands
     private static Command IlTimerCommand =>
         new Command("il-timer", "Prints level complete times (flag levels not supported)")
         {
-            new Option<bool>("--reset-pieces", "-rp")
-            {
-                Description = "Reset ALL pieces on door entry",
-                DefaultValueFactory = _ => false
-            }
+            new Option<bool>("--reset-pieces", "-rp") { Description = "Reset ALL pieces on door entry" },
         }
         .SetBraidGameAction((braidGame, parseResult) =>
         {
-            var resetPieces = parseResult.GetRequiredValue<bool>("--reset-pieces");
+            var resetPieces = parseResult.GetValue<bool>("--reset-pieces");
             Console.WriteLine("IL timing enabled. Press Ctrl+C to exit.");
 
             var currentState = braidGame.TimLevelState.Value;
             var oldState = braidGame.TimLevelState.Value;
             var currentFrame = braidGame.FrameCount.Value;
             var initialFrame = braidGame.FrameCount.Value;
+
+            // TODO: Maybe try reducing this loop's CPU load by using something like SpinWait(-1).
+            // Thread.Sleep(1) probably has insufficient resolution on Windows.
+            // Our best option is probably to use game event hooks instead of polling.
             while (true)
             {
-                currentState = braidGame.TimLevelState.Value;
-                currentFrame = braidGame.FrameCount.Value;
+                currentState = braidGame.TimLevelState;
+                currentFrame = braidGame.FrameCount;
                 if (oldState == currentState)
-                {
                     continue;
-                }
+
+                // TODO: Pause timer during puzzle screen
+                // TODO: Stop timer when flagpole is reached
 
                 if (braidGame.TimEnterDoor)
                 {
-                    Console.WriteLine($"\nLevel: {braidGame.TimWorld.Value}-{braidGame.TimLevel.Value}");
-                    Console.WriteLine($"Time: {((currentFrame - initialFrame) / 60.0).ToString("0.00")}");
+                    var levelFrames = currentFrame - initialFrame;
+                    var levelSeconds = levelFrames / 60.0;
+                    Console.WriteLine($"\nLevel: {braidGame.TimWorld}-{braidGame.TimLevel}");
+                    Console.WriteLine($"Time: {levelSeconds:0.00}");
+
                     if (resetPieces)
-                    {
                         braidGame.ResetPieces();
-                    }
                 }
 
                 if (braidGame.TimEnterLevel)
-                {
-                    initialFrame = braidGame.FrameCount.Value;
-                }
+                    initialFrame = braidGame.FrameCount;
+
                 oldState = currentState;
             }
         });
@@ -326,6 +327,6 @@ internal static class Commands
     private static void OutputTimSpeedMultiplier(BraidGame braidGame) => Console.WriteLine($"Tim's speed multiplier is {braidGame.TimSpeedMultiplier:0.##}");
     private static void OutputTimJumpMultiplier(BraidGame braidGame) => Console.WriteLine($"Tim's jump multiplier is {braidGame.TimJumpMultiplier:0.##}");
     private static void OutputFullSpeedInBackground(BraidGame braidGame) => Console.WriteLine($"Full game speed in background is {(braidGame.FullSpeedInBackground ? "on" : "off")}");
-    private static void OutputShowDebugInfo(BraidGame braidGame) => Console.WriteLine($"Debug info is {(braidGame.DrawDebugInfo.Value ? "on" : "off")}");
+    private static void OutputShowDebugInfo(BraidGame braidGame) => Console.WriteLine($"Debug info is {(braidGame.DrawDebugInfo ? "on" : "off")}");
     private static void OutputEntities(List<Entity> entities) => entities.ForEach(x => Console.WriteLine($"{x.EntityType} at x={x.PositionX.Value:0.##} y={x.PositionY.Value:0.##}"));
 }
