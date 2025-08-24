@@ -19,7 +19,8 @@ public class Entity(ProcessMemoryHandler _processMemoryHandler, IntPtr _addr)
     private GameValue<int> SupportedByPortableId { get; } = new(_processMemoryHandler, _addr + 0x78);
     public Vector2 Center => new(PositionX, PositionY + Height * .5f);
     public Vector2 Size => new(Width, Height);
-
+    public GameValue<float> FlagpoleTimeOfActivation { get; } = new(_processMemoryHandler, _addr + 0x58);
+    public bool IsFlagpoleActivated => FlagpoleTimeOfActivation >= 0f;
     public void DetachFromGround() => SupportedByPortableId.Value = 0;
 
     // TODO: This doesn't handle rotated/scaled hitboxes -- maybe we should use Intersects(other) instead but that only works within braid.exe
