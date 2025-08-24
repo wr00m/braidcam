@@ -32,6 +32,13 @@ internal static class CommandHelper
         return cmd;
     }
 
+    internal static Argument<TEnum> FormatEnumArgumentHelp<TEnum>(this Argument<TEnum> arg) where TEnum : struct, Enum
+    {
+        arg.HelpName = arg.Name;
+        arg.Description = string.Join("|", Enum.GetValues<TEnum>().Select(x => x.ToString().ToLowerInvariant()).OrderBy(x => x));
+        return arg;
+    }
+
     private static void OutputError(string message)
     {
         var previous = Console.ForegroundColor;
