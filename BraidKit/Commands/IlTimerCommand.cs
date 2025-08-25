@@ -1,4 +1,5 @@
 ﻿using System.CommandLine;
+using System.Runtime.InteropServices;
 
 namespace BraidKit.Commands;
 
@@ -8,12 +9,15 @@ internal static partial class Commands
         new Command("il-timer", "Prints level complete times (flag levels not supported)")
         {
             new Option<bool>("--reset-pieces", "-rp") { Description = "Reset ALL pieces on door entry" },
+            new Option<bool>("--high-precision", "-hp") { Description = "Increases system timer resolution" },
         }
         .SetBraidGameAction((braidGame, parseResult) =>
         {
             var resetPieces = parseResult.GetValue<bool>("--reset-pieces");
-            Console.WriteLine("IL timing enabled. Press Ctrl+C to exit.");
+            var highPrecision = parseResult.GetValue<bool>("--high-precision");
+            Console.WriteLine("IL timer enabled. Press Ctrl+C to exit.");
             using var cancelMessage = new TempCancelMessage("IL timer stopped");
+            using var highPrecisionTimer = highPrecision ? new HighPrecisionTimer(10) : null;
 
             var oldState = braidGame.TimLevelState.Value;
             var initialFrame = braidGame.FrameCount.Value;
@@ -50,4 +54,35 @@ internal static partial class Commands
                 oldState = currentState;
             }
         });
+}
+
+/// <summary>
+/// Increases system timer resolution, allowing Thread.Sleep() and timers to be more accurate. Use with care.
+/// </summary>
+internal class HighPrecisionTimer : IDisposable
+{
+    private readonly uint _resolutionMs;
+    private bool _disposed = false;
+
+    public HighPrecisionTimer(uint resolutionMs = 1)
+    {
+        _resolutionMs = resolutionMs;
+        _ = timeBeginPeriod(_resolutionMs);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        _ = timeEndPeriod(_resolutionMs);
+        GC.SuppressFinalize(this);
+    }
+
+    // Finalizer, in case someone forgets to call Dispose()
+    ~HighPrecisionTimer() => Dispose();
+
+    [DllImport("winmm.dll")] private static extern uint timeBeginPeriod(uint uMilliseconds);
+    [DllImport("winmm.dll")] private static extern uint timeEndPeriod(uint uMilliseconds);
 }
