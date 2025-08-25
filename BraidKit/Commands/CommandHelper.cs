@@ -13,13 +13,13 @@ internal static class CommandHelper
 
             if (braidGame is null)
             {
-                OutputError("Braid is not running");
+                ConsoleHelper.WriteError("Braid is not running");
                 return 1;
             }
 
             if (!braidGame.IsSteamVersion)
             {
-                OutputError("Only Steam version of Braid is supported");
+                ConsoleHelper.WriteError("Only Steam version of Braid is supported");
                 return 1;
             }
 
@@ -37,13 +37,5 @@ internal static class CommandHelper
         arg.HelpName = arg.Name;
         arg.Description = string.Join("|", Enum.GetValues<TEnum>().Select(x => x.ToString().ToLowerInvariant()).OrderBy(x => x));
         return arg;
-    }
-
-    private static void OutputError(string message)
-    {
-        var previous = Console.ForegroundColor;
-        Console.ForegroundColor = ConsoleColor.Red;
-        Console.Error.WriteLine(message);
-        Console.ForegroundColor = previous;
     }
 }

@@ -13,6 +13,7 @@ internal static partial class Commands
         {
             var resetPieces = parseResult.GetValue<bool>("--reset-pieces");
             Console.WriteLine("IL timing enabled. Press Ctrl+C to exit.");
+            using var cancelMessage = new TempCancelMessage("IL timer stopped");
 
             var oldState = braidGame.TimLevelState.Value;
             var initialFrame = braidGame.FrameCount.Value;
@@ -26,6 +27,8 @@ internal static partial class Commands
                 if (oldState == currentState)
                     continue;
 
+                // TODO: Break loop if game is closed
+                // TODO: Detect when level changes due to F1 key press, etc.
                 // TODO: Pause timer during puzzle screen
                 // TODO: Stop timer when flagpole is reached
 
