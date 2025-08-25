@@ -15,7 +15,11 @@ internal static class Bootstrapper
         _showHitboxes = !_showHitboxes;
         _braidGame ??= BraidGame.GetFromCurrentProcess();
         _renderer ??= new(_braidGame);
-        _endSceneHook ??= new(_braidGame, device => { if (_showHitboxes) _renderer.RenderCollisionGeometries(device); });
+        _endSceneHook ??= new(_braidGame, device =>
+        {
+            if (_showHitboxes)
+                _renderer.RenderCollisionGeometries(device);
+        });
         return _showHitboxes ? 1 : 0;
     }
 }

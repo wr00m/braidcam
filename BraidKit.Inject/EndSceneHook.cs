@@ -5,6 +5,9 @@ using Vortice.Direct3D9;
 
 namespace BraidKit.Inject;
 
+/// <summary>
+/// Callback hook for Direct3D's "end scene" function, which happens just before the next frame is rendered
+/// </summary>
 internal class EndSceneHook : IDisposable
 {
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
