@@ -74,7 +74,10 @@ public class BraidGame(Process _process, ProcessMemoryHandler _processMemoryHand
     private const IntPtr _individualPuzzlePieceOffset = 0x20;
 
     private PointerPath TimPointerPath { get; } = new(_processMemoryHandler, 0x5f6de8, 0x30, 0xc4, 0x8);
-    public Entity GetTim() => new(_processMemoryHandler, TimPointerPath.GetAddress());
+    public Entity GetTim() => new(_processMemoryHandler, TimPointerPath.GetAddress()!.Value);
+
+    private PointerPath GreeterPointerPath { get; } = new(_processMemoryHandler, 0x5f6de8, 0x30, 0xac, 0x8);
+    public Entity? GetDinosaurAkaGreeter() => GreeterPointerPath.GetAddress() is IntPtr addr ? new(_processMemoryHandler, addr) : null;
 
     private GameValue<double> TimRunSpeed { get; } = new(_processMemoryHandler, 0x5f6f08, 200);
     private GameValue<double> TimAirSpeed { get; } = new(_processMemoryHandler, 0x5f6f30, 200);
@@ -117,7 +120,7 @@ public class BraidGame(Process _process, ProcessMemoryHandler _processMemoryHand
     }
 
     private PointerPath DisplaySystemPointerPath { get; } = new(_processMemoryHandler, 0xb2989c, 0x4);
-    public DisplaySystem DisplaySystem => new(_processMemoryHandler, DisplaySystemPointerPath.GetAddress());
+    public DisplaySystem DisplaySystem => new(_processMemoryHandler, DisplaySystemPointerPath.GetAddress()!.Value);
 
     public void AddWatermark() => _processMemoryHandler.Write(0x00507bda, 0x00579e10);
 
@@ -135,6 +138,7 @@ public class BraidGame(Process _process, ProcessMemoryHandler _processMemoryHand
         // Note: Pieces in current level don't reset properly, but maybe that's a good thing for IL speedrunning
         for (int world = 0; world < 5; world++)
             for (int piece = 0; piece < 12; piece++)
+                // TODO: Write<byte>?
                 _processMemoryHandler.Write(_initialPuzzlePieceAddr + _worldPuzzlePieceOffset * world + _individualPuzzlePieceOffset * piece, 0);
     }
 }

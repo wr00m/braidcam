@@ -6,7 +6,7 @@ namespace BraidKit.Core;
 
 public class Entity(ProcessMemoryHandler _processMemoryHandler, IntPtr _addr)
 {
-    private IntPtr Addr => _addr;
+    public IntPtr Addr => _addr;
     public GameValue<EntityType> EntityType { get; } = new(_processMemoryHandler, _addr);
     public GameValue<EntityFlags> EntityFlags { get; } = new(_processMemoryHandler, _addr + 0x10);
     public GameValue<float> PositionX { get; } = new(_processMemoryHandler, _addr + 0x14);
@@ -90,7 +90,7 @@ public enum EntityType
     Flagpole = 0x0057966c,
     Floor = 0x0057969c,
     Gate = 0x00579c3c, // Gate with keyhole
-    Greeter = 0x00579ca8,
+    Greeter = 0x00579ca8, // Dinosaur at flagpole
     GunBoss = 0x00579cf0,
     Guy = 0x00579e60, // Tim
     IconBlock = 0x0057a118,
