@@ -1,6 +1,6 @@
-﻿namespace BraidKit;
+﻿namespace BraidKit.Core;
 
-internal static class ConsoleHelper
+public static class ConsoleHelper
 {
     public static void WriteWarning(string message)
     {
@@ -15,14 +15,14 @@ internal static class ConsoleHelper
     }
 }
 
-internal class TempConsoleColor : IDisposable
+public class TempConsoleColor : IDisposable
 {
     private ConsoleColor _initialColor = Console.ForegroundColor;
     public TempConsoleColor(ConsoleColor color) => Console.ForegroundColor = color;
     public void Dispose() => Console.ForegroundColor = _initialColor;
 }
 
-internal class TempCancelMessage : IDisposable
+public class TempCancelMessage : IDisposable
 {
     private ConsoleCancelEventHandler _handler;
     public TempCancelMessage(string message)

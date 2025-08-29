@@ -19,8 +19,7 @@ public class Entity(ProcessMemoryHandler _processMemoryHandler, IntPtr _addr)
     private GameValue<int> SupportedByPortableId { get; } = new(_processMemoryHandler, _addr + 0x78);
     public Vector2 Center => new(PositionX, PositionY + Height * .5f);
     public Vector2 Size => new(Width, Height);
-    public GameValue<float> FlagpoleTimeOfActivation { get; } = new(_processMemoryHandler, _addr + 0x58);
-    public bool IsFlagpoleActivated => FlagpoleTimeOfActivation >= 0f;
+
     public void DetachFromGround() => SupportedByPortableId.Value = 0;
 
     // TODO: This doesn't handle rotated/scaled hitboxes -- maybe we should use Intersects(other) instead but that only works within braid.exe
@@ -55,6 +54,20 @@ public class Entity(ProcessMemoryHandler _processMemoryHandler, IntPtr _addr)
     private delegate bool CircleEntityIntersectsRectangularEntityDelegate(IntPtr entity1Addr, IntPtr entity2Addr, out Vector2 overlap, out Vector2 collisionNormal, out Vector2 collisionPoint, float extraRadius, float verticalOffset);
     private static readonly CircleEntityIntersectsRectangularEntityDelegate _circleEntityIntersectsRectangularEntity = Marshal.GetDelegateForFunctionPointer<CircleEntityIntersectsRectangularEntityDelegate>(0x4df010);
     public bool Intersects(Entity other) => _circleEntityIntersectsRectangularEntity(_addr, other.Addr, out var _, out var _, out var _, 0f, 0f);
+
+    public FlagpoleEntity? AsFlagpole() => EntityType == Core.EntityType.Flagpole ? new(_processMemoryHandler, _addr) : null;
+    public GreeterEntity? AsGreeter() => EntityType == Core.EntityType.Greeter ? new(_processMemoryHandler, _addr) : null;
+}
+
+public class FlagpoleEntity(ProcessMemoryHandler _processMemoryHandler, IntPtr _addr) : Entity(_processMemoryHandler, _addr)
+{
+    public GameValue<float> FlagpoleTimeOfActivation { get; } = new(_processMemoryHandler, _addr + 0x58);
+    public bool IsFlagpoleActivated => FlagpoleTimeOfActivation >= 0f;
+}
+
+public class GreeterEntity(ProcessMemoryHandler _processMemoryHandler, IntPtr _addr) : Entity(_processMemoryHandler, _addr)
+{
+    public GameValue<bool> IsGreeterWalking { get; } = new(_processMemoryHandler, _addr + 0x50);
 }
 
 [Flags]
@@ -90,7 +103,7 @@ public enum EntityType
     Flagpole = 0x0057966c,
     Floor = 0x0057969c,
     Gate = 0x00579c3c, // Gate with keyhole
-    Greeter = 0x00579ca8, // Dinosaur at flagpole
+    Greeter = 0x00579ca8, // "The Princess is in another castle" dinosaur
     GunBoss = 0x00579cf0,
     Guy = 0x00579e60, // Tim
     IconBlock = 0x0057a118,

@@ -26,6 +26,7 @@ public class BraidGame(Process _process, ProcessMemoryHandler _processMemoryHand
 
     public Process Process => _process;
     public bool IsSteamVersion => _process.Modules[0].ModuleMemorySize == 7663616;
+    public bool IsRunning => !_process.HasExited;
 
     private static readonly byte[] _cameraEnabledBytes = [0xf3, 0x0f, 0x11];
     private static readonly byte[] _cameraDisabledBytes = [0x90, 0x90, 0x90];
@@ -77,7 +78,7 @@ public class BraidGame(Process _process, ProcessMemoryHandler _processMemoryHand
     public Entity GetTim() => new(_processMemoryHandler, TimPointerPath.GetAddress()!.Value);
 
     private PointerPath GreeterPointerPath { get; } = new(_processMemoryHandler, 0x5f6de8, 0x30, 0xac, 0x8);
-    public Entity? GetDinosaurAkaGreeter() => GreeterPointerPath.GetAddress() is IntPtr addr ? new(_processMemoryHandler, addr) : null;
+    public GreeterEntity? GetDinosaurAkaGreeter() => GreeterPointerPath.GetAddress() is IntPtr addr ? new Entity(_processMemoryHandler, addr).AsGreeter() : null;
 
     private GameValue<double> TimRunSpeed { get; } = new(_processMemoryHandler, 0x5f6f08, 200);
     private GameValue<double> TimAirSpeed { get; } = new(_processMemoryHandler, 0x5f6f30, 200);
@@ -103,11 +104,12 @@ public class BraidGame(Process _process, ProcessMemoryHandler _processMemoryHand
     public GameValue<int> TimLevelState { get; } = new(_processMemoryHandler, 0x5f93c0); // Level transition type
     public bool TimEnterDoor => TimLevelState == 1;
     public bool TimEnterLevel => TimLevelState == 4;
+    public bool TimTouchedFlagpole => GetDinosaurAkaGreeter()?.IsGreeterWalking ?? false;
 
     public GameValue<int> TimWorld { get; } = new(_processMemoryHandler, 0x5f718c);
     public GameValue<int> TimLevel { get; } = new(_processMemoryHandler, 0x5f7190);
 
-    public GameValue<int> FrameCount { get; } = new(_processMemoryHandler, 0x5f94b0);
+    public GameValue<int> FrameCount { get; } = new(_processMemoryHandler, 0x5f94b0); // Frame index
 
     public GameValue<bool> DrawDebugInfo { get; } = new(_processMemoryHandler, 0x5f6dcf);
 

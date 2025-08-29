@@ -1,4 +1,5 @@
-﻿using System.CommandLine;
+﻿using BraidKit.Core;
+using System.CommandLine;
 using System.Runtime.InteropServices;
 
 namespace BraidKit.Commands;
@@ -8,6 +9,7 @@ internal static partial class Commands
     private static Command IlTimerCommand =>
         new Command("il-timer", "Prints level complete times (flag levels not supported)")
         {
+            // TODO: Aliases should be single-letter
             new Option<bool>("--reset-pieces", "-rp") { Description = "Reset ALL pieces on door entry" },
             new Option<bool>("--high-precision", "-hp") { Description = "Increases system timer resolution" },
         }
@@ -15,45 +17,98 @@ internal static partial class Commands
         {
             var resetPieces = parseResult.GetValue<bool>("--reset-pieces");
             var highPrecision = parseResult.GetValue<bool>("--high-precision");
+
             Console.WriteLine("IL timer enabled. Press Ctrl+C to exit.");
-            using var cancelMessage = new TempCancelMessage("IL timer stopped");
+            using var cancelMessage = new TempCancelMessage("IL timer stopped"); // Shown when Ctrl+C is pressed
+
             using var highPrecisionTimer = highPrecision ? new HighPrecisionTimer(10) : null;
+            var ilTimer = new IlTimer(braidGame, resetPieces);
 
-            var oldState = braidGame.TimLevelState.Value;
-            var initialFrame = braidGame.FrameCount.Value;
+            while (braidGame.IsRunning)
+                SpinWait.SpinUntil(() => ilTimer.Tick(), 5);
 
-            // TODO: Maybe try reducing this loop's CPU load by using something like SpinWait(-1).
-            // Thread.Sleep(1) probably has insufficient resolution on Windows.
-            // Our best option is probably to use game event hooks instead of polling.
-            while (true)
-            {
-                var currentState = braidGame.TimLevelState.Value;
-                if (oldState == currentState)
-                    continue;
-
-                // TODO: Break loop if game is closed
-                // TODO: Detect when level changes due to F1 key press, etc.
-                // TODO: Pause timer during puzzle screen
-                // TODO: Stop timer when flagpole is reached
-
-                if (braidGame.TimEnterDoor)
-                {
-                    var currentFrame = braidGame.FrameCount.Value;
-                    var levelFrames = currentFrame - initialFrame;
-                    var levelSeconds = levelFrames / 60.0;
-                    Console.WriteLine($"\nLevel: {braidGame.TimWorld}-{braidGame.TimLevel}");
-                    Console.WriteLine($"Time: {levelSeconds:0.00}");
-
-                    if (resetPieces)
-                        braidGame.ResetPieces();
-                }
-
-                if (braidGame.TimEnterLevel)
-                    initialFrame = braidGame.FrameCount;
-
-                oldState = currentState;
-            }
+            ConsoleHelper.WriteWarning("IL timer stopped because game was closed");
         });
+}
+
+internal class IlTimer
+{
+    private readonly BraidGame _braidGame;
+    private readonly bool _resetPieces;
+    private bool _stopped;
+    private int _world;
+    private int _level;
+    private int _frameIndex;
+    private int _levelFrameCount;
+    private bool _hasMissedImportantFrames; // True if we missed frames at start/pause/unpause/stop
+
+    public IlTimer(BraidGame braidGame, bool resetPieces = false)
+    {
+        _braidGame = braidGame;
+        _resetPieces = resetPieces;
+        Restart();
+    }
+
+    private void Restart()
+    {
+        _stopped = false;
+        _world = _braidGame.TimWorld;
+        _level = _braidGame.TimLevel;
+        _frameIndex = _braidGame.FrameCount;
+        _levelFrameCount = 0;
+        _hasMissedImportantFrames = false;
+    }
+
+    private void Stop() => _stopped = true;
+
+    /// <returns>True if a new frame was handled</returns>
+    public bool Tick()
+    {
+        // Early exit if we have already polled this frame
+        var prevFrameIndex = _frameIndex;
+        _frameIndex = _braidGame.FrameCount;
+        if (_frameIndex == prevFrameIndex)
+            return false; // Keep polling
+
+        var frameDelta = _frameIndex - prevFrameIndex;
+        var hasMissedFrames = frameDelta > 1;
+
+        // Restart timer if level has changed
+        if (_braidGame.TimWorld != _world || _braidGame.TimLevel != _level)
+        {
+            Restart();
+            _hasMissedImportantFrames |= hasMissedFrames;
+            return true;
+        }
+
+        // Early exit if timer is stopped
+        if (_stopped)
+            return true;
+
+        _levelFrameCount += frameDelta;
+
+        // Stop timer if level is finished
+        if (_braidGame.TimEnterDoor || _braidGame.TimTouchedFlagpole)
+        {
+            _hasMissedImportantFrames |= hasMissedFrames;
+            Stop();
+
+            const double fps = 60.0;
+            var levelSeconds = _levelFrameCount / fps;
+
+            Console.WriteLine($"\nLevel: {_world}-{_level}");
+            Console.WriteLine($"Time: {levelSeconds:0.00}");
+
+            if (_hasMissedImportantFrames)
+                ConsoleHelper.WriteWarning("Retiming needed due to dropped frames");
+
+            // TODO: Maybe this should be moved to Restart() so reset also happens when F1 is pressed?
+            if (_resetPieces)
+                _braidGame.ResetPieces();
+        }
+
+        return true;
+    }
 }
 
 /// <summary>
