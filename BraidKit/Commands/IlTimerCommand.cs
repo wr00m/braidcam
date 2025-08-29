@@ -10,11 +10,15 @@ internal static partial class Commands
         new Command("il-timer", "Prints level complete times (flag levels not supported)")
         {
             // TODO: Aliases should be single-letter
+            new Option<int?>("--world", "-w") { Description = "Only use timer for this world" },
+            new Option<int?>("--level", "-l") { Description = "Only use timer for this level" },
             new Option<bool>("--reset-pieces", "-rp") { Description = "Reset ALL pieces on door entry" },
             new Option<bool>("--high-precision", "-hp") { Description = "Increases system timer resolution" },
         }
         .SetBraidGameAction((braidGame, parseResult) =>
         {
+            var world = parseResult.GetValue<int?>("--world");
+            var level = parseResult.GetValue<int?>("--level");
             var resetPieces = parseResult.GetValue<bool>("--reset-pieces");
             var highPrecision = parseResult.GetValue<bool>("--high-precision");
 
@@ -22,7 +26,7 @@ internal static partial class Commands
             using var cancelMessage = new TempCancelMessage("IL timer stopped"); // Shown when Ctrl+C is pressed
 
             using var highPrecisionTimer = highPrecision ? new HighPrecisionTimer(10) : null;
-            var ilTimer = new IlTimer(braidGame, resetPieces);
+            var ilTimer = new IlTimer(braidGame, world, level, resetPieces);
 
             while (braidGame.IsRunning)
                 SpinWait.SpinUntil(() => ilTimer.Tick(), 5);
@@ -34,26 +38,30 @@ internal static partial class Commands
 internal class IlTimer
 {
     private readonly BraidGame _braidGame;
+    private readonly int? _onlyWorld;
+    private readonly int? _onlyLevel;
     private readonly bool _resetPieces;
     private bool _stopped;
-    private int _world;
-    private int _level;
+    private int _currentWorld;
+    private int _currentLevel;
     private int _frameIndex;
     private int _levelFrameCount;
     private bool _hasMissedImportantFrames; // True if we missed frames at start/pause/unpause/stop
 
-    public IlTimer(BraidGame braidGame, bool resetPieces = false)
+    public IlTimer(BraidGame braidGame, int? onlyWorld = null, int? onlyLevel = null, bool resetPieces = false)
     {
         _braidGame = braidGame;
+        _onlyWorld = onlyWorld;
+        _onlyLevel = onlyLevel;
         _resetPieces = resetPieces;
         Restart();
     }
 
     private void Restart()
     {
-        _stopped = false;
-        _world = _braidGame.TimWorld;
-        _level = _braidGame.TimLevel;
+        _currentWorld = _braidGame.TimWorld;
+        _currentLevel = _braidGame.TimLevel;
+        _stopped = (_onlyWorld != null && _currentWorld != _onlyWorld) || (_onlyLevel != null && _currentLevel != _onlyLevel);
         _frameIndex = _braidGame.FrameCount;
         _levelFrameCount = 0;
         _hasMissedImportantFrames = false;
@@ -74,7 +82,7 @@ internal class IlTimer
         var hasMissedFrames = frameDelta > 1;
 
         // Restart timer if level has changed
-        if (_braidGame.TimWorld != _world || _braidGame.TimLevel != _level)
+        if (_braidGame.TimWorld != _currentWorld || _braidGame.TimLevel != _currentLevel)
         {
             Restart();
             _hasMissedImportantFrames |= hasMissedFrames;
@@ -96,7 +104,7 @@ internal class IlTimer
             const double fps = 60.0;
             var levelSeconds = _levelFrameCount / fps;
 
-            Console.WriteLine($"\nLevel: {_world}-{_level}");
+            Console.WriteLine($"\nLevel: {_currentWorld}-{_currentLevel}");
             Console.WriteLine($"Time: {levelSeconds:0.00}");
 
             if (_hasMissedImportantFrames)
