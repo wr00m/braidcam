@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace BraidKit.Core;
+namespace BraidKit.Core.MemoryAccess;
 
 public class ProcessMemoryHandler : IDisposable
 {

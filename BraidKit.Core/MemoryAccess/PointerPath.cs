@@ -1,4 +1,4 @@
-﻿namespace BraidKit.Core;
+﻿namespace BraidKit.Core.MemoryAccess;
 
 public class PointerPath(ProcessMemoryHandler _processMemoryHandler, params IntPtr[] _addrOffsets)
 {

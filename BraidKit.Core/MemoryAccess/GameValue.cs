@@ -1,4 +1,4 @@
-﻿namespace BraidKit.Core;
+﻿namespace BraidKit.Core.MemoryAccess;
 
 public class GameValue<T>(ProcessMemoryHandler _processMemoryHandler, IntPtr _addr, T? _defaultValue = default) : IFormattable
     where T : unmanaged

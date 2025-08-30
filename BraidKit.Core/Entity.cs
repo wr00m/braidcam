@@ -1,6 +1,7 @@
 ﻿using System.Drawing;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using BraidKit.Core.MemoryAccess;
 
 namespace BraidKit.Core;
 

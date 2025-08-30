@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using BraidKit.Core.MemoryAccess;
 
 namespace BraidKit.Core;
 

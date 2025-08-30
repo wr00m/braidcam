@@ -1,4 +1,6 @@
-﻿namespace BraidKit.Core;
+﻿using BraidKit.Core.MemoryAccess;
+
+namespace BraidKit.Core;
 
 public class DisplaySystem(ProcessMemoryHandler _processMemoryHandler, IntPtr _addr)
 {
