@@ -71,16 +71,6 @@ public class BraidGame(Process _process, ProcessMemoryHandler _processMemoryHand
         }
     }
 
-    private const IntPtr _initialPuzzlePieceAddr = 0x5f7584;
-    private const IntPtr _worldPuzzlePieceOffset = 0x18c;
-    private const IntPtr _individualPuzzlePieceOffset = 0x20;
-
-    private PointerPath TimPointerPath { get; } = new(_processMemoryHandler, 0x5f6de8, 0x30, 0xc4, 0x8);
-    public Entity GetTim() => new(_processMemoryHandler, TimPointerPath.GetAddress()!.Value);
-
-    private PointerPath GreeterPointerPath { get; } = new(_processMemoryHandler, 0x5f6de8, 0x30, 0xac, 0x8);
-    public GreeterEntity? GetDinosaurAkaGreeter() => GreeterPointerPath.GetAddress() is IntPtr addr ? new Entity(_processMemoryHandler, addr).AsGreeter() : null;
-
     private GameValue<double> TimRunSpeed { get; } = new(_processMemoryHandler, 0x5f6f08, 200);
     private GameValue<double> TimAirSpeed { get; } = new(_processMemoryHandler, 0x5f6f30, 200);
     private GameValue<double> TimClimbSpeed { get; } = new(_processMemoryHandler, 0x5f6f20, 173.3);
@@ -127,17 +117,36 @@ public class BraidGame(Process _process, ProcessMemoryHandler _processMemoryHand
 
     public void AddWatermark() => _processMemoryHandler.Write(0x00507bda, 0x00579e10);
 
+    private const int _entityManagerPointerAddr = 0x5f6de8;
     public List<Entity> GetEntities()
     {
-        const int entityManagerPointerAddr = 0x005f6de8;
-        var entityManagerAddr = _processMemoryHandler.Read<int>(entityManagerPointerAddr);
+        var entityManagerAddr = _processMemoryHandler.Read<int>(_entityManagerPointerAddr);
         var entityAddrs = new AutoArray<int>(_processMemoryHandler, entityManagerAddr + 0xc).GetAllItems();
         var entities = entityAddrs.Select(x => new Entity(_processMemoryHandler, x)).ToList();
         return entities;
     }
 
+    private IEnumerable<Entity> GetEntitiesByPortableType(PortableTypeAddr portableTypeAddr)
+    {
+        var portableType = new PortableType(_processMemoryHandler, portableTypeAddr);
+        var linkedListArrayAddr = new PointerPath(_processMemoryHandler, _entityManagerPointerAddr, 0x30).GetAddress()!.Value;
+        var linkedListArray = new CArray(linkedListArrayAddr, MemoryAccess.LinkedList<IntPtr>.StructSize);
+        var linkedListAddr = linkedListArray.GetItemAddr(portableType.SerialNumber);
+        var linkedList = new MemoryAccess.LinkedList<IntPtr>(_processMemoryHandler, linkedListAddr);
+        var entities = linkedList.GetItems().Select(entityAddr => new Entity(_processMemoryHandler, entityAddr));
+        return entities;
+    }
+
+    public Entity GetTim() => GetEntitiesByPortableType(PortableTypeAddr.Guy).FirstOrDefault() ?? throw new Exception("Where's Tim?");
+    public GreeterEntity? GetDinosaurAkaGreeter() => GetEntitiesByPortableType(PortableTypeAddr.Greeter).FirstOrDefault()?.AsGreeter();
+    public List<Entity> GetPuzzleFrames() => GetEntitiesByPortableType(PortableTypeAddr.PuzzleFrame).ToList();
+
     public void ResetPieces()
     {
+        const IntPtr _initialPuzzlePieceAddr = 0x5f7584;
+        const IntPtr _worldPuzzlePieceOffset = 0x18c;
+        const IntPtr _individualPuzzlePieceOffset = 0x20;
+
         // Note: Pieces in current level don't reset properly, but maybe that's a good thing for IL speedrunning
         for (int world = 0; world < 5; world++)
             for (int piece = 0; piece < 12; piece++)

@@ -71,6 +71,7 @@ public class GreeterEntity(ProcessMemoryHandler _processMemoryHandler, IntPtr _a
     public GameValue<bool> IsGreeterWalking { get; } = new(_processMemoryHandler, _addr + 0x50);
 }
 
+/// <summary>Flag names are best guesses, take with a grain of salt</summary>
 [Flags]
 public enum EntityFlags : uint
 {
@@ -87,9 +88,9 @@ public enum EntityFlags : uint
     // TODO: 0x2000000u is apparently something
 }
 
+/// <summary>Hex values are vtable memory addresses</summary>
 public enum EntityType
 {
-    // Values are vtable memory addresses
     Booster = 0x0057858c,
     Bullet = 0x005785b8,
     CameraControl = 0x00578808,
